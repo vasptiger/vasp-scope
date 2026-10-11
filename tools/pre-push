@@ -17,8 +17,13 @@ cd "$REPO_ROOT"
 echo "[pre-push] 脱敏闸门：检查即将推送的内容……"
 
 # 1) 禁用词（个人主机名/用户名/路径）—— 基于 **git 已跟踪的文件**，而不是工作区
+#
+# ⚠️ 自匹配陷阱：本文件与 scrub.mjs 里**写着**这些词的正则，会被自己命中 ✗
+#    （第一次实测时，连干净内容都被拒推 ✗）→ 必须用 :(exclude) 把闸门自身排除 ✓
+GATE=':(exclude)tools/pre-push'
+GATE2=':(exclude)tools/scrub.mjs'
 BAD='hcx|leehpc|lenovo|rocky|101\.7\.129\.73|D:\\dsh|/home/hcx|/home/leehpc'
-HITS=$(git grep -n -I -E "$BAD" -- . 2>/dev/null || true)
+HITS=$(git grep -n -I -E "$BAD" -- . "$GATE" "$GATE2" 2>/dev/null || true)
 if [ -n "$HITS" ]; then
   echo "[pre-push] ✗ 发现个人数据，拒绝推送："
   echo "$HITS" | head -20
@@ -28,7 +33,7 @@ fi
 
 # 2) 疑似密钥
 SECRETS='BEGIN [A-Z ]*PRIVATE KEY|ssh-(rsa|ed25519) AAAA|ghp_[A-Za-z0-9]{20,}|github_pat_|sk-[A-Za-z0-9]{20,}'
-SH=$(git grep -n -I -E "$SECRETS" -- . 2>/dev/null || true)
+SH=$(git grep -n -I -E "$SECRETS" -- . "$GATE" "$GATE2" 2>/dev/null || true)
 if [ -n "$SH" ]; then
   echo "[pre-push] ✗ 检出疑似密钥/凭据，拒绝推送："
   echo "$SH" | head -10
