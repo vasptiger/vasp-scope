@@ -1,0 +1,26 @@
+{
+  "_说明": "把本文件复制成 config.json 后填写。所有值请改成你自己的集群信息；本示例不含任何真实地址。",
+
+  "sshHost": "user@your-cluster.example.edu",
+  "_sshHost说明": "ssh 目标。可以是 user@host，也可以写 ~/.ssh/config 里配置好的别名（推荐，密钥/端口都写在 ssh config 里更安全）。",
+
+  "roots": [
+    "/path/to/your/vasp/projects"
+  ],
+  "_roots说明": "允许面板访问的远端根目录白名单（安全边界）：面板只能读这些目录下面的文件。可以给多项。",
+
+  "defaultScanRoot": "/path/to/your/vasp/projects",
+  "_defaultScanRoot说明": "点“刷新”时默认扫描的根目录；留空则用 roots 的第一项。",
+
+  "maxDepth": 8,
+  "_maxDepth说明": "扫描任务目录的最大深度（1–16）。VASP 任务常有 nf/nf/nf 之类的尾链，8 通常够用。",
+
+  "maxReadBytes": 524288,
+  "_maxReadBytes说明": "单次远端文件读取的字节上限（默认 512 KB）。",
+
+  "maxImageBytes": 6291456,
+  "_maxImageBytes说明": "图片预览的单文件上限（默认 6 MB）。",
+
+  "token": "",
+  "_token说明": "可选访问令牌。留空 = 不鉴权（服务只监听 127.0.0.1，本机可用）。填了之后浏览器需带 ?token=<值> 打开面板。"
+}

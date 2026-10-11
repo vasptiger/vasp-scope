@@ -1,0 +1,25 @@
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+
+# ⚠️ 本地配置：含你的集群主机名、目录、令牌 —— 绝不入库
+config.json
+config.local.json
+*.token
+**/.ssh/
+
+# 运行产物 / 快照 / 截图
+*.zip
+*.log
+shots/
+versions/
+_release/
+.vaspflow-probe/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

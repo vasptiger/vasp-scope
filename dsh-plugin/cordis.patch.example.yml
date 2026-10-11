@@ -1,0 +1,31 @@
+# dsh-vasp-panel bundle patch: mounts the panel plugin into a dsh profile.
+#
+# 宿主半边把【远程集群】的 VASP 任务目录经 SSH 暴露成 /plugins/dsh-vasp-panel/* 路由；
+# 浏览器半边注册侧栏入口 + 右侧面板（面板本体是 assets/panel.html，用 iframe 嵌）。
+#
+# 安装：dsh plugin --profile <name> add <本目录>   （或 profile 里 pnpm add 后加进 bundles）
+- insert:
+    - id: vasp-panel
+      name: dsh-vasp-panel
+      config:
+        # SSH 目标（~/.ssh/config 里的别名，或 user@host）。留空 = 不改远程，只用内嵌快照。
+        sshHost: mycluster
+        # 允许访问的根目录白名单；rel 路径必须落在其中之一下面（安全边界）。
+        #
+        # /home/shared/projects —— 家目录 /home/shared 本身是 drwx--x---+（只有 user:--x，
+        # 能穿行、不能列目录），但它下面的 projects 是 drwxrwsr-x（other::r-x），
+        # 全球可读且可枚举，实测 294 个 VASP 任务。所以白名单加的是 projects 这一层。
+        roots:
+          - /home/user/projects/demo
+          - /home/shared/projects
+        # 扫描任务的默认根
+        defaultScanRoot: /home/user/projects/demo
+        # 单次远端文件读取的上限（字节）
+        maxReadBytes: 524288
+        # 访问令牌。命名路由天然绕过 DSH fallback 那层的鉴权（实测 GET / → 401，
+        # 而本插件路由 → 200），所以插件必须自己校验。留空 = 不鉴权。
+        #
+        # ★ 当前按用户要求留空：本机 127.0.0.1:19387 上任何进程都能借本插件读白名单内的
+        #   集群文件（它持有 SSH key）。要恢复鉴权：填一个随机串，或往 assets/token.txt
+        #   写一行（那条是【每次请求现读】的，改完不用重启）。
+        token: ''

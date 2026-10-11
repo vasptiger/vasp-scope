@@ -1,0 +1,21 @@
+# 跨平台换行规则（别删：CRLF 的 .sh 在 Linux 上会直接报错 ✗）
+# 默认：仓库内一律 LF
+* text=auto eol=lf
+
+# Windows 批处理必须是 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 面板是单文件 HTML，项目约定 CRLF（见 docs/开发规范）
+*.html text eol=crlf
+
+# 二进制：不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.pdf binary

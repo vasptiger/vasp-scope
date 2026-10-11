@@ -1,0 +1,201 @@
+# VASP 面板开发规范（工程侧）
+
+> 配套 skill：`C:\Users\user\.dsh\skills\dsh-vasp-panel-dev\SKILL.md`（同一份规则的"给 AI 用"版本，
+> 以后新会话会自动加载）。本文档是"给人看"的版本，多了证据、命令与踩坑经过。
+> 建立日期：2026-10-09（面板 v59 / 插件 0.5.35 时）。
+
+---
+
+## 1. 交付纪律
+
+1. **每次改动都跑完整验证**（三件套，缺一不可）：
+
+```powershell
+$node='C:\Users\user\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe'
+# 面板语法（把 <script> 抠出来编译一次，抓低级错误）
+& $node -e "const fs=require('fs');const h=fs.readFileSync('D:/dsh/vasp-panel.html','utf8');new Function(h.match(/<script>([\s\S]*?)<\/script>/)[1]);console.log('OK')"
+# 16 套面板探针
+foreach($x in (Get-ChildItem 'D:\vasp-panel\.vaspflow-probe' -Filter '*-probe.mjs')){ & $node $x.FullName }
+# 40 项宿主单测 + 版本守卫
+& $node --test 'D:\vasp-panel\vasp-panel-plugin\test\host.test.mjs'
+& $node 'D:\vasp-panel\.vaspflow-probe\build-probe.mjs'
+```
+
+2. **红灯如实报**，并区分两种情况：
+   - 探针"断言的是被删除/变更的旧行为" → 更新断言（例如路由数 9→10、能垒夹具列序）；
+   - 真缺陷 → 修产品代码。
+   两者绝不能混着报"全绿"。
+
+---
+
+## 2. 版本纪律（已有守卫拦截）
+
+改面板 = **四件事同时做**：
+
+| # | 动作 | 曾经踩的坑 |
+|---|---|---|
+| 1 | 改 `const BUILD = 'v<N> · …'` | **忘了两次**，用户两次看到"标题栏是旧版本" |
+| 2 | `Copy-Item vasp-panel.html vasp-panel-plugin\assets\panel.html` | 忘了同步 → 插件带旧面板 |
+| 3 | `python D:\vasp-panel\snapshot.py 'v<N>-<slug>'` | slug 写成 `v44b-…` 被工具拒绝（必须 `v<N>-`） |
+| 4 | 插件 `package.json` 版本 +0.0.1 并快照整个插件 | 版本号替换**静默没匹配上** → package.json 卡在 0.5.19 而快照已到 0.5.33（漂移多轮才被我发现） |
+
+`build-probe.mjs` 现在守四条：`BUILD == 最新面板快照`、`assets 逐字节一致`、
+`package.json == 最新插件快照`、`宿主默认深度 8 + /scan 有 900 s 超时`。
+
+---
+
+## 3. 文件与改动的规矩
+
+- 面板 HTML 是 **CRLF、无 BOM**；写完代码检查 `CR == LF`；**不要**用 `Set-Content -Encoding UTF8`（会加 BOM）。
+- 改代码只用两种方式：**`write` 工具直接写文件** / **`edit` 工具字面替换**（改前先 `read` 目标片段）。
+- **绝对不要**写"补丁脚本里嵌代码"式的补丁：
+  模板字面量里的 shell `${bn#I}`、`${f}` 会被 JS 插值 → `Missing } in template expression`，
+  我因此**把宿主文件弄成不可加载**过（这是比"功能没做完"严重得多的错）。
+- 动**宿主**的铁律：先 `import()` 验证可加载 → 再真机验证 → 最后才注册路由；任一步失败**立刻从 `versions\` 快照还原**。
+
+---
+
+## 4. 远端脚本与验证的规矩
+
+- 宿主用 `sshRun(host, script)` = `ssh host <script>`（argv 传参）：
+  脚本必须 **单行（`; ` 拼接）＋纯 ASCII**。多行会被吃、中文注释经 UTF-8 传参会搅坏 → `unbound variable`。
+- 复杂脚本**独立成文件**：`lib/plot-script.js`（字符串数组 + `join('; ')`，全程不出现 `${`）。
+- **验证宿主行为必须用宿主自己的 `sshRun`**：
+
+```powershell
+# 对：走宿主同一条代码路径（Node 正确转义 argv）
+& $node 'D:\vasp-panel\.vaspflow-probe\test-plot-live.mjs' '/home/user/projects/demo/nd/li/nf/nf/nf' 2
+# 错：PowerShell `ssh mycluster $script` 会毁引号 —— 我据此误判过"宿主传参坏了"
+```
+
+- 解析器口径**不要猜**：远端段落能原样给面板解析就原样给（`KLABELS` 就是这么修的）。
+  `parseKlines` 期望 **`标签 k`**（`G 0.000`），我最初按 `k 标签` 输出 → **高对称点会全丢**（演练才发现）。
+
+---
+
+## 5. 性能模型
+
+| 类型 | 例子 | 为什么快/慢 |
+|---|---|---|
+| 快 | `/task`（结构+收敛，22 KB）、`/convergence`（1 KB） | 一次 ssh + **服务端已解析**成小 JSON，面板本地重画 |
+| 慢 | 能带/PDOS/能垒（旧路径） | `/read` 逐文件逐块搬原始文本：512 KB/次上限、**每块一次完整 ssh 握手**（Windows OpenSSH 无 ControlMaster）、base64 +33% → 约 10 次 ssh / 45~60 s |
+| 现在 | `/plot` 批量路由 | 服务端 awk 压好（BAND 分块+抽稀、PDOS 11→4 列、NEB 前三列）→ **1 次 ssh / 910 KB / 15~33 s**；失败自动回退 |
+
+- 能垒任务**只有 `.dat`** 时也必须走批量（`got` 判定要包含 `B.neb`）——我漏过这一条，导致能垒一直慢。
+- 能垒只存在于 `00/01/…` image 目录时仍走第③级（每张图 2 次 `/read`）；要再快需给宿主 `/read` 加 `tail=1`（待办）。
+
+---
+
+## 6. 面板状态陷阱
+
+| 陷阱 | 现象/修法 |
+|---|---|
+| `LIVE.on` 被复位 | 桩 `fetch` 让 `/ping` 失败时 `liveConnect` 把 `LIVE.on=false` → 演练里**每次调用前重设** |
+| 缓存是 `PLOT[t.p]` | 不是 `PLOTS`；不清缓存会拿到上一分支结果，把结论带偏 |
+| 缺请求令牌 | 快速切换任务时**旧请求后返回**会把上一个任务的图画到当前画布 → `const want=t.p` + `if(SEL.p!==want) return` |
+| 不清旧图 | 用户要求"点下一个文件不许还显示上一个的图" → `clearPlotPane()` 立刻清画布并写"读取中… <任务>"；返回已看过的任务命中缓存即出图 |
+| 页签互相拖累 | 任一取数失败要 `try` 住、单文件失败跳过；曾出现"能垒取数把能带/PDOS 一起带崩" |
+
+---
+
+## 7. 解析口径速查
+
+| 数据 | 口径 |
+|---|---|
+| `BAND.dat` | 空行/`#` 分块、**块内按 k 升序**、`E_F ≡ 0` 不平移；`k E↑ E↓` |
+| `KLABELS/KLINES` | **`标签 k`**（也支持单列 k）；**原样 cat 给面板**，远端不做格式假设 |
+| `PDOS_*/IPDOS_*` | `s=第2列`、`p=第3..5列和`、`d=第6..10列和`（**不含 tot**）；自旋↓为负 → **取绝对值**；`PDOS_` 优先于 `IPDOS_` |
+| 能垒 `.dat` | **第1列标号 / 第2列累计距离(x) / 第3列能垒值**（保留首列后 `rows[k-1]` 会整体后移，我取错过列） |
+| image 目录能垒 | OUTCAR **尾部**最后一条 `free energy TOTEN`（兜底 `energy(sigma->0)`/`E0`）+ POSCAR 位移 RMSD；**逐级上溯**找 NEB 根；编号可能 `00` 或 `01` 起 |
+
+---
+
+## 8. 环境与运维
+
+```powershell
+$node = 'C:\Users\user\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe'
+$py   = 'C:\Users\user\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+# 面板快照 / 插件快照见 §2；探针与测量脚本在 D:\vasp-panel\.vaspflow-probe\
+```
+
+- 集群：`ssh mycluster`；`shared` **只读**（从不写）。IP/端口/用户名**不要写进任何对外文件**。
+- **磁盘**：`versions\` 快照累积；C 盘写满会导致**一切写入失败**（连工具输出都写不出）。
+  可清理：`%LOCALAPPDATA%\Temp`、`pip`、`npm-cache`、`Overwolf\CrashDumps`、游戏缓存、App 旧版本目录。
+  两个坑：① `%APPDATA%\npm` 是**全局包**不是缓存；② PowerShell 里**别把自己的函数叫 `Kill`**（撞 `Stop-Process` 别名，一条都删不掉）。
+
+---
+
+## 9. 对外分享
+
+- 只从**白名单**复制（`package.json/README/LICENSE/install.ps1/lib/assets/test/cordis.*.yml`），
+  复制后**逐条脱敏**再**复扫**：IP、ssh 别名、用户名、家目录、本机路径、内部项目名、真实任务名、私钥、口令 → **零命中**。
+- 扫描器只放行明显假值（如测试夹具 `TEST-TOKEN-NOT-A-SECRET`）。
+- 已产出：`D:\vasp-panel\vasp-panel-plugin-oss-1.0.0.zip`（110 KB，扫描零命中）。
+
+---
+
+## 10. 宿主机脚本改动铁律（2026-10-09 补，含两次真实事故）
+
+改 `lib/host-v7.js` 里的远端 shell 脚本时，我**连续两次把扫描弄坏**并当场回滚：
+
+| 事故 | 现象 | 原因 |
+|---|---|---|
+| ① 只换引用没插定义 | 真机扫描只回 **8 字节**、`T|` 行 0 条 | `.Replace('"$d/INCAR"','"$I"')` 把**定义行自己**也换成了 `I="$I"`（变量自指）；而我"插定义"用的锚点在源文件里是**转义写法**（`\$d/INCAR`），没匹配上 |
+| ② 顺序颠倒 | 同上 | 先插定义再换引用时，新定义会被替换命中 → 必须先换引用、**后**插定义 |
+
+**四条铁律**：
+
+1. **先读源文件真实写法**（`\$d/INCAR`、`\"$K\"`、`printf '\\n@FILE %s\\n'` 这些转义态），再动手；
+2. **替换要带上下文**（例如只替换 `"$d/INCAR" 2>/dev/null`、`[ -f "$d/KPOINTS" ]`、`head -8 "$d/KPOINTS"`），避开定义行；
+3. **先换引用、后插定义**；
+4. 改完固定顺序：`import()` 可加载 → 单测 40/40 → **用宿主自己的 `sshRun` 真机验证** → 版本化；任一步失败**立刻从 `versions\` 快照还原**（我两次都是这样收场的）。
+
+## 11. 一条重要环境事实：shared 的 NEB image 目录
+
+`/home/shared/projects/user/ml/TS/nf/00|01|…` 这类 **image 目录里没有 `INCAR` / `KPOINTS`** —— 它们在**上一级 NEB 根** `…/TS/nf/` 里（同目录还有 `neb.dat`(VTST 5 列：标号/累计距离/能量/力/标号)、`POTCAR`、`CONTCARFI`、`CONTCARIN`）。
+
+因此宿主里读这两个文件的地方**缺失时必须回 `$D/../`**：
+
+| 位置 | 状态 |
+|---|---|
+| `/scan` 的 `inc`（INCAR 子集）与 `kp`（KPOINTS 类型） | ✅ 已修（插件 v0.5.36） |
+| `/task` 的 `@FILE INCAR` / `@FILE KPOINTS` | ✅ 已修（插件 v0.5.37） |
+| `CONTCAR` / `POSCAR` | **不回退**（结构必须来自任务目录本身） |
+
+**症状对照**：修复前 shared 的任务在面板里**计算类型/输入依据全空**（`inc=""`、`kp=""`），user 的任务正常。
+**实测修复后**（`/home/shared/projects/user/ml/TS/nf/01`）：
+`inc="ICHARG=2,LDAU=.TRUE.,IVDW=11,NSW=200,ISIF=2,IBRION=3,IMAGES=7,"`、`kp="grid"`、`ionic="37"`。
+
+**易误判点**：`/scan` 返回的离子步字段名是 **`ionic`**（不是 `nion`）—— 我曾打印错键，误报"离子步是空的"。
+
+
+## 12. 操作坑清单（PowerShell / heredoc / JSON / shell，2026-10-10 补）
+
+与 skill `dsh-vasp-panel-dev` 的 §7.6 同步。要点：
+
+1. **PowerShell 变量不区分大小写** —— `$H` 与 `$h` 是同一个；我因此把文件内容当路径传给 `WriteAllText`，**那次改动静默丢失**（"路径中具有非法字符"）。变量名要带语义。
+2. **双引号里的 `$(...)` 会被展开** —— 我写 `"$(which === 'band' ? …)"` 被当命令执行 → 替换静默失败。搜索/替换串一律单引号。
+3. **here-string 是 LF** —— 注入 CRLF 文件后锚点匹配失败 + CR/LF 不一致。注入前后都要 CRLF 化并校验。
+4. **注释里禁止 `*/`** —— `PDOS_*/IPDOS_*` 提前结束块注释 → 文件语法错误（宿主连带加载失败）。
+5. **远端一行脚本禁止 `<>`** —— 被 shell 当重定向。
+6. **`case` 模式里 `?` 不是"可选"** —— `I?PDOS*)` 导致所有 PDOS 被跳过（用户报"读不到 DOS"）。
+7. **base64 必须先截到 `__END__`** —— `END` 是合法 base64 字符，长度 `%4=3` 会让浏览器 `atob` 报 "not correctly encoded"，而 Node 宽容所以服务端自测看不出。
+8. **`JSON.stringify` 把 `NaN` 变 `null`** —— 探针断言要在 VM 内用 `String(x)==='NaN'` 判。
+9. **验证宿主行为只用宿主自己的 `sshRun`** —— PowerShell 代跑会毁引号，害我误判过"宿主传参坏了"。
+10. **浏览器与 Node 的 base64 宽容度不同** —— 编码类改动两端都要验。
+11. **`<img>` 可能被环境拒绝（`img-src`）** —— 图片预览走 canvas + `createImageBitmap`。
+
+## 13. 数据读取口径表（★ = 仍需用户确认）
+
+| 数据 | 列 / 单位 | 规矩 |
+|---|---|---|
+| `MSD.dat` | `Time(fs) x y z tot sqrt(MSD)` | fs → 显示 ps |
+| `DIFFUSION_COEFFICIENT.dat` | `Time(fs)` + 4 个 D | **cm²/s**；表头首列 `(A^2)` 是笔误 |
+| **D 换算**（已对齐脚本） | `MSD = 6Dt` → `D = 斜率/6`；时间 ps、MSD Å² → ×1e-4（按 fs 拟合 ×0.1 等价） | 来源 `msd_Mg_1000K.py` L112–124：**全段 + 后段[50–100%] 两个 D**；拟合线 #7f7f7f、MSD #d62728、ylim=max×1.12 |
+| `RDF_<A>-<B>.dat` | `Radius RDF` | NaN 行保留、画线跳过 |
+| `COORDINATION_NUMBER_<A>-<B>.dat` | `Radius CN` | 右轴叠加（未做） |
+| `KLABELS`/`KLINES` | 标签在前 `G 0.000` | 远端原样 `cat`，不做格式假设 |
+| 能垒 `*.dat` | 标号 / 累计距离 / 能垒值 | `rows[k-1]` 陷阱；排除 `fe.dat` |
+| `PDOS_*`/`IPDOS_*` | s=2列, p=3..5, d=6..10（不含 tot）；↓为负 | 直接画文件值；尺度用 \|max\|；`PDOS_` 优先 |
+| `BAND.dat` | 空行分块、按 k 升序、`E_F≡0` | 抽稀不丢块 |
+| 结构 | CONTCAR 优先；INCAR/KPOINTS 缺失回上一级 | 结构不回退 |
