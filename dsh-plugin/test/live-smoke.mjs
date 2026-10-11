@@ -246,7 +246,7 @@ console.log('\n=== 12. 原始 T| 行结构（防「变量里混进换行把整�
      后面 8 个字段（元素/计数/INCAR/产物/状态标记）全丢。
      凡是 OSZICAR 里没有 F= 行的任务都中招（shared 上 134 个）。
      挑一个**确实含这种任务**的子树来验，否则这个守卫形同虚设。 */
-  const sub = '/home/shared/projects/axw/vasp6.4.2/BiOX';
+  const sub = '/home/shared/projects/alice/vasp6.4.2/BiOX';
   const raw = await host.sshRun('mycluster', host.scanScript(sub, 3), { timeout: 300000 });
   const lines = raw.stdout.split(/\r?\n/).filter(l => l.startsWith('T|'));
   /* 字段数：T + rel/out/osz/nion/els/cnt/inc/fl/done/acc/err/age/kp = 14 */
