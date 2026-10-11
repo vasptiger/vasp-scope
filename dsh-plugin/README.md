@@ -70,7 +70,7 @@ VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程�
 | `UNKNOWN` 待检查 | 兜底；内嵌快照（老数据只有 `acc`）仍按 `acc` 判，行为不变 |
 
 真机实测（`/home/user/projects/demo` 39 个任务）：**完成 38 · 错误 1** —— 那个错误任务是
-`VC/mg2`：`ZBRENT: fatal error in bracketing` → VASP 自己打了
+`proj2/mg2`：`ZBRENT: fatal error in bracketing` → VASP 自己打了
 `I REFUSE TO CONTINUE WITH THIS SICK JOB ... BYE!!!` 就退出了（没有收尾行），
 在旧面板里它一直显示「待检查」。
 
@@ -121,4 +121,4 @@ node test/live-smoke.mjs
 ```
 
 真机冒烟实测：`/home/user/projects/demo` 下 **30 个** VASP 任务（1216 ms），
-其中 14 个是 `cij/mno` 弹性常数应变序列 —— 这些在只手工拉了 16 个的面板里是没有的。
+其中 14 个是 `proj1/mno` 弹性常数应变序列 —— 这些在只手工拉了 16 个的面板里是没有的。

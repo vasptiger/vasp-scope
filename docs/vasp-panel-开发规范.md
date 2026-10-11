@@ -64,7 +64,7 @@ foreach($x in (Get-ChildItem 'D:\vasp-panel\.vaspflow-probe' -Filter '*-probe.mj
 
 ```powershell
 # 对：走宿主同一条代码路径（Node 正确转义 argv）
-& $node 'D:\vasp-panel\.vaspflow-probe\test-plot-live.mjs' '/home/user/projects/demo/nd/li/nf/nf/nf' 2
+& $node 'D:\vasp-panel\.vaspflow-probe\test-plot-live.mjs' '/home/user/projects/demo/demo/sys1/nf/nf/nf' 2
 # 错：PowerShell `ssh mycluster $script` 会毁引号 —— 我据此误判过"宿主传参坏了"
 ```
 

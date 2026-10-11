@@ -43,16 +43,16 @@ else {
   }
   ok(b.count >= 16, `任务数应 ≥16（实得 ${b.count}）`);
   ok(ms < 30000, `一次扫描 ${ms} ms`);
-  ok(b.tasks.some(t => t.rel === 'VC/mg3' && t.ionic === 70), 'VC/mg3 应为 70 个离子步');
+  ok(b.tasks.some(t => t.rel === 'proj2/mg3' && t.ionic === 70), 'proj2/mg3 应为 70 个离子步');
   // 面板只手工拉了 16 个；扫描能发现全部（含 cij 弹性常数应变序列）
-  const cij = b.tasks.filter(t => t.rel.startsWith('cij/'));
+  const cij = b.tasks.filter(t => t.rel.startsWith('proj1/'));
   console.log(`  ── 扫描额外发现 ${cij.length} 个 cij 任务（面板里没有）`);
-  ok(cij.length > 0, '应能发现 cij/ 下的任务');
+  ok(cij.length > 0, '应能发现 proj1/ 下的任务');
 }
 
 console.log('\n=== 3. list（真 ssh）===');
 const r3 = res();
-await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + enc('/home/user/projects/demo/VC/mg1')), r3);
+await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + enc('/home/user/projects/demo/proj2/mg1')), r3);
 if (r3.code !== 200) { console.log('  ✗ ' + r3.body.slice(0, 200)); fail++; }
 else {
   const b = J(r3);
@@ -63,7 +63,7 @@ else {
 
 console.log('\n=== 4. read（真 ssh，分块）===');
 const r4 = res();
-await h.read(req('/plugins/dsh-vasp-panel/read?file=' + enc('/home/user/projects/demo/VC/mg1/INCAR') + '&offset=0&limit=200'), r4);
+await h.read(req('/plugins/dsh-vasp-panel/read?file=' + enc('/home/user/projects/demo/proj2/mg1/INCAR') + '&offset=0&limit=200'), r4);
 if (r4.code !== 200) { console.log('  ✗ ' + r4.body.slice(0, 200)); fail++; }
 else {
   const b = J(r4);
@@ -75,7 +75,7 @@ else {
 }
 
 console.log('\n=== 5. convergence（真 ssh）===');
-const r5 = res();await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + enc('/home/user/projects/demo/nd/mg/nf')), r5);
+const r5 = res();await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + enc('/home/user/projects/demo/demo/mg/nf')), r5);
 if (r5.code !== 200) { console.log('  ✗ ' + r5.body.slice(0, 200)); fail++; }
 else {
   const b = J(r5);
@@ -90,7 +90,7 @@ console.log('\n=== 6. task：单任务全量（真 ssh，一次往返）===');
 {
   const t0 = Date.now();
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/VC/mg3') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
   const ms = Date.now() - t0;
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
@@ -102,10 +102,10 @@ console.log('\n=== 6. task：单任务全量（真 ssh，一次往返）===');
     console.log(`  CONTCAR: 原子 ${c.frac.length}  元素 ${c.els.join('/')}  计数 ${c.cnt.join(' ')}  a=${a.toFixed(4)}`);
     console.log(`  INCAR: ${Object.keys(b.incar).length} 个键  SYSTEM=${b.incar.SYSTEM}  ISIF=${b.incar.ISIF}`);
     console.log(`  能量: ${b.ionic[0]?.[1]} → ${b.ionic[b.ionic.length - 1]?.[1]}`);
-    ok(c.frac.length === 51, `VC/mg3 应 51 个原子（实得 ${c.frac.length}）`);
+    ok(c.frac.length === 51, `proj2/mg3 应 51 个原子（实得 ${c.frac.length}）`);
     ok(c.els.join('/') === 'Mg/O/Mn', `元素顺序应 Mg/O/Mn（实得 ${c.els.join('/')}）`);
     ok(JSON.stringify(c.cnt) === JSON.stringify([3, 32, 16]), `计数应 3 32 16（实得 ${c.cnt.join(' ')}）`);
-    ok(b.ionic.length === 70, `VC/mg3 应 70 个离子步（实得 ${b.ionic.length}）`);
+    ok(b.ionic.length === 70, `proj2/mg3 应 70 个离子步（实得 ${b.ionic.length}）`);
     ok(Math.abs(a - 8.2528) < 0.01, `a 应为 8.2528（实得 ${a.toFixed(4)}）`);
     ok(b.incar.ISIF === '3', `INCAR 的 ISIF 应为 3（实得 ${b.incar.ISIF}）`);
     ok(b.files.some(f => f.name === 'OUTCAR'), '文件清单应含 OUTCAR');
@@ -122,10 +122,10 @@ ok(r6.code === 400, '白名单外的 root 应被拒（这也说明它不会被�
 /* 电子步（SCF）：awk 那一半没有本地单测（Windows 上没有 awk），只能在这里打真集群验。
    基准值来自远端 OSZICAR 的第一行（vasp.6.3.2）：
      DAV:   1     0.606302983290E+04    0.60630E+04   -0.21981E+05  6336   0.185E+03 */
-console.log('\n=== 8. 电子步 SCF：静态单点任务（真 ssh，nd/li/nf/nf）===');
+console.log('\n=== 8. 电子步 SCF：静态单点任务（真 ssh，demo/sys1/nf/nf）===');
 {
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/nd/li/nf/nf') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/demo/sys1/nf/nf') + '&ttl=0'), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
     const b = J(r);
@@ -143,10 +143,10 @@ console.log('\n=== 8. 电子步 SCF：静态单点任务（真 ssh，nd/li/nf/nf
   }
 }
 
-console.log('\n=== 9. 电子步 × 多离子步（真 ssh，VC/mg3）===');
+console.log('\n=== 9. 电子步 × 多离子步（真 ssh，proj2/mg3）===');
 {
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/VC/mg3') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
     const b = J(r);
@@ -170,7 +170,7 @@ console.log('\n=== 10. scan 顺带字段：元素/计数 + INCAR 子集 + 产物
     const withInc = b.tasks.filter(t => t.inc).length;
     const withFl = b.tasks.filter(t => t.fl).length;
     console.log(`  ${n} 个任务：带元素/计数 ${withEls}，带 INCAR 子集 ${withInc}，带产物标记 ${withFl}`);
-    for (const rel of ['nd/li/nf/nf', 'VC/mg3', 'cij/mno/ref', 'nd/mno/nf/dos']) {
+    for (const rel of ['demo/sys1/nf/nf', 'proj2/mg3', 'proj1/proj3/ref', 'demo/sys2/nf/dos']) {
       const t = b.tasks.find(x => x.rel === rel);
       if (t) console.log(`    ${rel.padEnd(15)} 元素 ${(t.els || '-').padEnd(10)} 计数 ${(t.cnt || '-').padEnd(10)} inc=${t.inc || '-'} fl=${t.fl || '-'}`);
     }
@@ -185,16 +185,16 @@ console.log('\n=== 10. scan 顺带字段：元素/计数 + INCAR 子集 + 产物
     ok(glued.length === 0, `INCAR 子集必须是「一键一值」的逗号分隔（发现 ${glued.length} 个粘连：${glued.slice(0, 3).join(' ')}）`);
     const keysOf = rel => String((b.tasks.find(t => t.rel === rel) || {}).inc || '')
       .split(',').filter(Boolean).map(kv => kv.split('=')[0].toUpperCase());
-    const staticKeys = keysOf('nd/li/nf/nf');
+    const staticKeys = keysOf('demo/sys1/nf/nf');
     ok(staticKeys.includes('NSW') && staticKeys.includes('IBRION'),
       `NSW / IBRION 必须是各自独立的键（实得 ${staticKeys.join('+')}）`);
-    const relaxKeys = keysOf('VC/mg3');
-    ok(relaxKeys.includes('IBRION') && relaxKeys.includes('ISIF'), `VC/mg3 的键应含 IBRION/ISIF（实得 ${relaxKeys.join('+')}）`);
+    const relaxKeys = keysOf('proj2/mg3');
+    ok(relaxKeys.includes('IBRION') && relaxKeys.includes('ISIF'), `proj2/mg3 的键应含 IBRION/ISIF（实得 ${relaxKeys.join('+')}）`);
     ok(relaxKeys.length >= 2, `一个任务的 INCAR 子集不该只有 1 个键（实得 ${relaxKeys.length}）`);
-    const staticOne = b.tasks.find(t => t.rel === 'nd/li/nf/nf');
+    const staticOne = b.tasks.find(t => t.rel === 'demo/sys1/nf/nf');
     ok(staticOne && /NSW=0/.test(staticOne.inc) && /IBRION=-1/.test(staticOne.inc), '静态单点任务应能看出 NSW=0 / IBRION=-1');
-    const relax = b.tasks.find(t => t.rel === 'VC/mg3');
-    ok(relax && /IBRION=2/.test(relax.inc), 'VC/mg3 应能看出 IBRION=2（结构优化）');
+    const relax = b.tasks.find(t => t.rel === 'proj2/mg3');
+    ok(relax && /IBRION=2/.test(relax.inc), 'proj2/mg3 应能看出 IBRION=2（结构优化）');
     ok(b.tasks.every(t => !t.els.includes('|') && !t.cnt.includes('|')), '字段里不该混进分隔符（串位会直接看错）');
   }
 }
@@ -214,13 +214,13 @@ console.log('\n=== 11. 任务状态标记（真 ssh）：只看 OUTCAR 尾部 ==
     console.log(`  ${n} 个任务：正常收尾行 ${done}，弛豫收敛达标 ${acc}，命中错误关键字 ${err}，900s 内更新 ${fresh}`);
     const ages = b.tasks.map(t => t.age).filter(a => a !== null).sort((x, y) => x - y);
     console.log(`  静默时长：最短 ${(ages[0] / 3600).toFixed(1)} h，中位 ${(ages[ages.length >> 1] / 86400).toFixed(1)} 天，最长 ${(ages[ages.length - 1] / 86400).toFixed(1)} 天`);
-    for (const rel of ['VC/mg3', 'nd/li/nf/nf', 'cij/mno/ref']) {
+    for (const rel of ['proj2/mg3', 'demo/sys1/nf/nf', 'proj1/proj3/ref']) {
       const t = b.tasks.find(x => x.rel === rel);
       if (t) console.log(`    ${rel.padEnd(14)} done=${t.done} acc=${t.acc} err=${t.err} age=${(t.age / 86400).toFixed(1)} 天`);
     }
     ok(done >= n * 0.9, `大多任务应能认出正常收尾行（实得 ${done}/${n}）`);
     /* 命中错误关键字的任务：**很少**（关键字列表没写宽）；且它们都不该同时有正常收尾行。
-       真机第一次跑就揪出一个真失败的：VC/mg2 —— ZBRENT 线搜索失败，
+       真机第一次跑就揪出一个真失败的：proj2/mg2 —— ZBRENT 线搜索失败，
        VASP 自己打了 `I REFUSE TO CONTINUE WITH THIS SICK JOB ... BYE!!!` 然后退出。 */
     const errList = b.tasks.filter(t => t.err).map(t => t.rel);
     console.log(`  命中错误关键字的任务：${errList.length ? errList.join(', ') : '（无）'}`);
@@ -228,8 +228,8 @@ console.log('\n=== 11. 任务状态标记（真 ssh）：只看 OUTCAR 尾部 ==
     ok(b.tasks.filter(t => t.err).every(t => t.done === 0),
       '致命错误任务不该同时有正常收尾行（VASP 的「I REFUSE」类错误会直接退出）');
     ok(b.tasks.every(t => t.age !== null && t.age >= 0), '每个任务都应带回静默秒数');
-    const mg3 = b.tasks.find(t => t.rel === 'VC/mg3');
-    ok(mg3 && mg3.done === 1, 'VC/mg3 应已正常收尾（done=1）');
+    const mg3 = b.tasks.find(t => t.rel === 'proj2/mg3');
+    ok(mg3 && mg3.done === 1, 'proj2/mg3 应已正常收尾（done=1）');
     /* 面板的判定规则照抄一遍，看真实数据会分成什么样 */
     const cls = t => !t.outcar ? 'NO_OUTPUT' : t.err ? 'ERROR' : t.done ? 'DONE' : (t.age <= 900 ? 'RUNNING' : 'ERROR');
     const dist = {};
@@ -246,7 +246,7 @@ console.log('\n=== 12. 原始 T| 行结构（防「变量里混进换行把整�
      后面 8 个字段（元素/计数/INCAR/产物/状态标记）全丢。
      凡是 OSZICAR 里没有 F= 行的任务都中招（shared 上 134 个）。
      挑一个**确实含这种任务**的子树来验，否则这个守卫形同虚设。 */
-  const sub = '/home/shared/projects/alice/vasp6.4.2/BiOX';
+  const sub = '/home/shared/projects/alice/vasp6.4.2/systemA';
   const raw = await host.sshRun('mycluster', host.scanScript(sub, 3), { timeout: 300000 });
   const lines = raw.stdout.split(/\r?\n/).filter(l => l.startsWith('T|'));
   /* 字段数：T + rel/out/osz/nion/els/cnt/inc/fl/done/acc/err/age/kp = 14 */

@@ -80,7 +80,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
     assert.ok(script.includes("ROOT='/home/user/projects/demo'"), '脚本应带 root');
     /* 深度：真机的 nf/nf/nf 链有十几层 → 默认 16、上限 32（用户要求「钻到最后一级」） */
     assert.ok(script.includes('-maxdepth 8'), '默认深度 8');
-    return { code: 0, stdout: 'T|nd/li|4525465|1930|1\nT|VC/mg3|12916079|67659|70\n__END__\n', stderr: '' };
+    return { code: 0, stdout: 'T|demo/sys1|4525465|1930|1\nT|proj2/mg3|12916079|67659|70\n__END__\n', stderr: '' };
   };
   const h = mk(CFG, { sshRun });
   const r1 = fakeRes();
@@ -88,7 +88,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
   const b1 = bodyOf(r1);
   assert.equal(r1.code, 200);
   assert.equal(b1.count, 2);
-  assert.equal(b1.tasks[0].rel, 'nd/li');
+  assert.equal(b1.tasks[0].rel, 'demo/sys1');
   assert.equal(b1.tasks[1].ionic, 70);
   assert.equal(b1.cached, false);
 
@@ -110,8 +110,8 @@ test('scan：远端无此目录 → 404', async () => {
    未点开的任务整列是空的、状态恒为「待检查」（用户实测报过：看不出是结构优化还是电荷）。 */
 test('scan：带回元素/计数/INCAR 子集/产物文件/状态标记（面板不必等点开任务）', async () => {
   const stdout = [
-    'T|nd/li|4525465|1930|1|Li O Mn|1 32 16|ICHARG=11,NSW=0,IBRION=-1,|CHGCAR,DOSCAR,|1|1|0|120',
-    'T|VC/mg3|12916079|67659|70|Mg O Mn|3 32 16|IBRION=2,NSW=60,ISIF=3,|CHGCAR,|0|1|0|86400',
+    'T|demo/sys1|4525465|1930|1|Li O Mn|1 32 16|ICHARG=11,NSW=0,IBRION=-1,|CHGCAR,DOSCAR,|1|1|0|120',
+    'T|proj2/mg3|12916079|67659|70|Mg O Mn|3 32 16|IBRION=2,NSW=60,ISIF=3,|CHGCAR,|0|1|0|86400',
     'T|err/x|200|100|3|O Mn|32 16|||1|0|1|999999',
     'T|noage/x|200|100|0|O Mn|32 16||CHGCAR,|1|0|0|',
     'T|empty/x|100|0|0|||||0|0|0|5',
@@ -167,7 +167,7 @@ test('scanScript：包含元素/计数/INCAR/产物/状态标记的抽取，且�
   assert.ok(s.includes('General timing and accounting'), '缺「正常收尾行」判据');
   assert.ok(s.includes('reached required accuracy'), '缺「弛豫收敛达标」判据');
   assert.ok(s.includes('VERY BAD NEWS') && s.includes('ZBRENT: fatal error'), '缺致命错误关键字');
-  assert.ok(s.includes('I REFUSE TO CONTINUE'), '缺 VASP 的「我不干了」关键字（真机 VC/mg2 就是这样死的）');
+  assert.ok(s.includes('I REFUSE TO CONTINUE'), '缺 VASP 的「我不干了」关键字（真机 proj2/mg2 就是这样死的）');
   assert.ok(s.includes('stat -c%Y'), '缺 OUTCAR mtime（判断还在不在写）');
   assert.equal((s.match(/^find /gm) || []).length, 1, '仍然只有一次 find（一次往返）');
   assert.equal((s.match(/tail -c 200000/g) || []).length, 1, '每个任务只 tail 一次 OUTCAR');
@@ -204,7 +204,7 @@ test('list：全量文件清单（不设白名单）', async () => {
   });
   const h = mk(CFG, { sshRun });
   const res = fakeRes();
-  await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + encodeURIComponent('/home/user/projects/demo/VC/mg1')), res);
+  await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + encodeURIComponent('/home/user/projects/demo/proj2/mg1')), res);
   const b = bodyOf(res);
   assert.equal(b.count, 3);
   assert.deepEqual(b.files.map(f => f.name), ['CONTCAR', 'INCAR', '4473.user.log']);
@@ -247,7 +247,7 @@ test('convergence：解析 I/F 行', async () => {
   });
   const h = mk(CFG, { sshRun });
   const res = fakeRes();
-  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/nd/mg/nf')), res);
+  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   const b = bodyOf(res);
   assert.equal(b.ionic.length, 2);
   assert.deepEqual(b.ionic[1], [2, -370.89224]);
@@ -409,7 +409,7 @@ test('parseTaskOutput：远端目录不存在 → null', () => {
 
 /* 电子步抽取的输出契约：`S <离子步> <电子步> <E> <dE> <rms> <rms(c)>`。
    awk 那一半没法在 Windows 上单测（本机没有 awk），它由 live-smoke.mjs 打真集群验证；
-   这里对应的真实 OSZICAR 输入（vasp.6.3.2，nd/li/nf/nf）留作对照：
+   这里对应的真实 OSZICAR 输入（vasp.6.3.2，demo/sys1/nf/nf）留作对照：
      DAV:   1     0.606302983290E+04    0.60630E+04   -0.21981E+05  6336   0.185E+03
      DAV:   2     0.496072884585E+03   -0.55670E+04   -0.51797E+04  6336   0.564E+02
            1 F= -.484062419722E+03 E0= -.484062419722E+03  d E =-.484062E+03
@@ -452,7 +452,7 @@ test('convergence 路由：也把电子步 scf 返回给调用方', async () => 
                   'S 1 2 -484.062419900 -1.78e-7 6.18e-05 null', 'F 0.1 0.05', '__END__'].join('\n');
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout, stderr: '' }) });
   const res = fakeRes();
-  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/nd/li/nf/nf')), res);
+  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/sys1/nf/nf')), res);
   assert.equal(res.code, 200);
   const b = bodyOf(res);
   assert.equal(b.nScf, 2);
@@ -464,10 +464,10 @@ test('convergence 路由：也把电子步 scf 返回给调用方', async () => 
 test('task 路由：注入假 ssh，校验返回结构', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: TASK_OUT, stderr: '' }) });
   const res = fakeRes();
-  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/nd/mg/nf')), res);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   assert.equal(res.code, 200);
   const b = bodyOf(res);
-  assert.equal(b.rel, 'nd/mg/nf');
+  assert.equal(b.rel, 'demo/mg/nf');
   assert.equal(b.files.length, 2);
   assert.ok(b.structures.CONTCAR);
   assert.equal(b.ionic.length, 2);
@@ -484,7 +484,7 @@ test('task 路由：注入假 ssh，校验返回结构', async () => {
 test('task 路由：老面板（不认识 scf）也照样能用 —— 多出来的字段是纯增量', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: TASK_OUT, stderr: '' }) });
   const res = fakeRes();
-  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/nd/mg/nf')), res);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   const b = bodyOf(res);
   assert.equal(b.ionic.length, 2, 'ionic 结构未变');
   assert.deepEqual(Object.keys(b).filter(k => /scf/i.test(k)), ['scf', 'nScf'], '只新增 scf/nScf 两个键');
@@ -493,7 +493,7 @@ test('task 路由：老面板（不认识 scf）也照样能用 —— 多出来
 test('task 路由：ttl=0 绕过缓存', async () => {
   let calls = 0;
   const h = mk(CFG, { sshRun: async () => { calls++; return { code: 0, stdout: TASK_OUT, stderr: '' }; } });
-  const url = '/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/nd/mg/nf') + '&ttl=0';
+  const url = '/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf') + '&ttl=0';
   await h.task(req(url), fakeRes());
   await h.task(req(url), fakeRes());
   assert.equal(calls, 2, 'ttl=0 时不应命中缓存');
@@ -525,7 +525,7 @@ test('回归：标记黏在上一行末尾也要能切分（INCAR 末尾没有�
 });
 
 test('taskScript：每个标记前都先补换行（printf 而非裸 echo）', () => {
-  const s = host.taskScript('/home/user/projects/demo/VC/mg3');
+  const s = host.taskScript('/home/user/projects/demo/proj2/mg3');
   assert.ok(s.includes("printf '\\n@FILES\\n'"), '@FILES 前应补换行');
   assert.ok(s.includes("printf '\\n@FILE %s\\n' \"$f\""), '@FILE 前应补换行');
   assert.ok(s.includes("printf '\\n@CONV\\n'"), '@CONV 前应补换行');

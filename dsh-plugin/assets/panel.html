@@ -417,10 +417,10 @@ const elColor = e => P().el[e] || P().el._
    ===================================================================== */
 /* 任务表：**运行时**由插件 /scan 填（面板不缓存任何任务数据） */
 const TASKS = []
-/* 任务的绝对目录：实时任务带 dir 字段；内嵌的 nd 任务走 .../nd/<p>，VC 的 <p> 本身已含 VC/ */
+/* 任务的绝对目录：实时任务带 dir 字段；内嵌的 nd 任务走 .../demo/<p>，VC 的 <p> 本身已含 proj2/ */
 const absDir = t => (t && t.dir) ? t.dir
-  : `/home/user/projects/demo/${(t && t.base === 'VC') ? '' : 'nd/'}${t.p}`
-/* 分组按任务表实际出现的顺序推导：内嵌数据得到 li/mg/mno/VC，实时扫描得到 nd/VC/cij */
+  : `/home/user/projects/demo/${(t && t.base === 'VC') ? '' : 'demo/'}${t.p}`
+/* 分组按任务表实际出现的顺序推导：内嵌数据得到 li/mg/proj3/VC，实时扫描得到 demo/proj2/cij */
 const groupsNow = () => { const seen = []; for(const t of TASKS) if(!seen.includes(t.grp)) seen.push(t.grp); return seen }
 const GROUPS = ['li','mg','mno','VC']   // 内嵌数据的顺序基准（供对照）
 const STATUS = {  NO_OUTPUT_EVIDENCE:{label:'未发现计算输出',short:'未输出',icon:'▤',tag:'gold'},
@@ -1837,7 +1837,7 @@ function plotCandidates(t, sub, remoteNames){
     else if(base === 'KLINES.dat') out.klines = n
     else if(base === 'KLABELS') out.klabels = n
     /* VASPKIT 会同时写 PDOS_* 与 **IPDOS_***（积分/累计 PDOS）—— 两种都认，
-       否则真机上（如 nd/li、nd/mno/nf）一个 PDOS 文件都匹配不到。 */
+       否则真机上（如 demo/sys1、demo/sys2/nf）一个 PDOS 文件都匹配不到。 */
     /* VASPKIT 的 DOS 产物名字有好几种：PDOS_<el>_UP/DW.dat、IPDOS_*（积分）、
        不带自旋后缀的 PDOS_<el>.dat，以及**总 DOS** TDOS.dat / ITDOS.dat（真机实测都有）。 */
     else if(pdosOwner(base) || /^I?TDOS\.dat$/i.test(base)) out.pdos.push(n)
@@ -2007,7 +2007,7 @@ function nebX(d, how, rev){
   return { x, how }
 }
 /** NEB 根目录：**选中的是 image 目录（名字是数字）时，取它的上一级**。
- *  真机实证（shared）：`…/BiOX/Br_TS-BiOBr/00|01|02` —— image 就摆在 TS 根下，
+ *  真机实证（shared）：`…/systemA/Br_TS-BiOBr/00|01|02` —— image 就摆在 TS 根下，
  *  选中 `…/00` 时若不回到上一级，就会去找 `00/00/POSCAR`（找不到，图自然空）。 */
 /** NEB 根的候选：**选中目录 → 上一级 → 上两级**，逐个试到能读出 image 为止。
  *  只认"目录名是数字就取上一级"是不够的 —— 真机上 image 可能摆在

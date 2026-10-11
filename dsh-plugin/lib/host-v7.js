@@ -26,7 +26,22 @@ import { execFile } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, posix } from 'node:path';
-import z from '@deepseek-ai/schemastery';
+/* 发布版刻意不依赖 DSH 内部包 @deepseek-ai/schemastery ✗ —— 否则在 DSH 之外（CI、本地跑测试、别人 clone）会直接 ERR_MODULE_NOT_FOUND ✓
+   在 DSH 里：拿到真实 schema ✓；在 DSH 外：退化为最小 shim，Config 变成“默认值对象” ✓
+   （宿主代码实际读取配置时本来就带兜底：cfg.roots || [] 等 ✓） */
+let z
+ try { z = (await import('@deepseek-ai/schemastery')).default } catch (_) { z = null }
+if (!z) {
+  const dflt = () => ({ default: v => v })
+  z = {
+    string: dflt, number: dflt, array: dflt,
+    /* 返回**可调用**对象：DSH 侧的插件契约要求 Config 是 schemastery 工厂（typeof === 'function'）✓
+       默认值同时挂在 .defaults 上，方便不依赖 DSH 时读取 ✓ */
+    object: spec => Object.assign(function () { return spec }, {
+      defaults: Object.fromEntries(Object.entries(spec).map(kv => [kv[0], (kv[1] && typeof kv[1] === 'object' && 'default' in kv[1]) ? kv[1].default : kv[1]])),
+    }),
+  }
+}
 
 export const name = 'dsh-vasp-panel';
 export const inject = [];
@@ -739,7 +754,18 @@ export function createHandlers(cfg, deps = {}) {
       if (r.code !== 0) { json(res, 502, { error: 'ssh 失败', detail: r.stderr.slice(0, 400) }); return; }
       const parsed = parseTaskOutput(r.stdout);
       if (!parsed) { json(res, 404, { error: '远端目录不存在', dir }); return; }
-      const body = { dir, rel: dir.replace(/^.*\/(nd|VC)\//, '$1/'), ...parsed, cached: false };
+      /* rel 按配置的 roots 推导（以前把**分组名写死在正则里** ✗ —— 目录名一改就退化成绝对路径 ✓）
+       兜底保留老口径，避免遇到不在 roots 下的目录时行为突变 ✓ */
+    const relOf = (function (d) {
+      const rs = (cfg.roots && cfg.roots.length) ? cfg.roots : [];
+      for (const r of rs) {
+        const rr = String(r).replace(/\/+$/, '');
+        if (d === rr) return '';
+        if (rr && d.indexOf(rr + '/') === 0) return d.slice(rr.length + 1);
+      }
+      return String(d).replace(/^.*\/([^/]+)\//, '$1/');
+    })(dir);
+    const body = { dir, rel: relOf, ...parsed, cached: false };
       if (ttl > 0) cache.set(key, body);
       json(res, 200, body);
     },
