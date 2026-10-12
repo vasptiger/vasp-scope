@@ -1,131 +1,124 @@
-# DSH 插件版 · 使用教程
+# dsh-vasp-scope
 
-> **一句话**：把 vasp-scope 的面板开进 [DeepSeek Harness](https://github.com/KevPH2026/deepseek-harness-desktop) 的侧栏 ——
-> 一边和 Agent 说话，一边在旁边看计算结果的图（能带 / PDOS / 收敛 / 能垒 / 结构 / AIMD）。
+VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程集群**上的 VASP 任务目录；
+浏览器半边在 **DSH 侧栏底部（"设置"旁边）挂一个常驻入口**，点一下就把面板文件
+开成侧栏里的一个标签页 —— 不用每次去文件树里找 `D:\vasp-panel\panel.html`。
+
+## 侧栏常驻入口（浏览器半边 `lib/client.js`）
+
+| 环节 | 做法 |
+|---|---|
+| 挂载点 | 外壳自带的槽位 `sidebar.footer.action`（"Optional actions beside Settings at the sidebar foot"，`replaceRisk: none`），用 `ctx.slots.inject(...)` 等声明、再 `ctx.slots.register(...)` |
+| 折叠态 | 外壳把唯一 owner prop `wide` 传进来：`wide=true` 显示"图标 + VASP 面板"，`false`（56px 轨道）只显示图标 |
+| 点击动作 | `ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\dsh\\vasp-panel.html')` → 面板作为侧栏标签页打开（同路径自动去重，不会开成两个） |
+| 为什么不是打开 URL | 侧栏浏览器硬编码拦掉一切本机地址，所以入口只把**本地面板文件**开进侧栏；面板在**不透明源沙箱 iframe**里渲染，靠下面这套 CORS 头跨域取数 |
+| 依赖 | `dsh-better-sidebar`（提供 `ctx.betterSidebar`）。缺了它入口会安静降级（console.warn），**不会报错、不会拖挂页面** |
+| 容错 | `apply()` 与 factory 整体 try/catch；`slots`/`betterSidebar` 都用可选访问，任何异常都不冒泡到外壳 |
+
+> 这套客户端半边先在**隔离探针** `dsh-vasp-scope-probe` 上验证过（宿主/客户端两半加载、
+> 槽位占用 `active:true`、入口渲染、点击开进侧栏、页面不挂），确认无误后才合并到这里。
+
+## 与 dsh-vaspflow 的关键差别
+
+| | dsh-vaspflow | dsh-vasp-scope |
+|---|---|---|
+| 数据来源 | **本地** `node:fs` 扫本地目录 | **远程 SSH**，按给定路径读 |
+| 目录枚举 | 依赖 `readdir` | 枚举可选；**给精确路径就能读** |
+| 适用 ACL | 需可读目录 | 也适用于 `--x`（可进入、不可枚举），如 `/home/shared` |
+| 前端 | React + antd + three（需打包） | **单文件 HTML 走 iframe**，无需打包 |
+
+## 路由（前缀 `/plugins/dsh-vasp-scope/*`）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/diag` | 自诊断：路由注册结果 + 环境 |
+| GET | `/ping` | `{ ok, sshHost, roots }` |
+| GET | `/panel` | 面板 HTML（`assets/panel.html`） |
+| POST | `/scan?root=&maxDepth=` | root 下所有含 `OUTCAR` 的任务目录，每行顺带：OUTCAR/OSZICAR 字节数、离子步数、**元素顺序 + 计数**（结构文件第 6/7 行，VASP4 从 POTCAR 的 TITEL 补）、**判定计算类型要用的 INCAR 子集**、**关键产物文件**（CHGCAR/CHG/DOSCAR）、**状态标记**（`done`/`acc`/`err`/`age`） |
+| GET | `/list?dir=` | 某目录的**全量**文件清单（不设白名单） |
+| GET | `/read?file=&offset=&limit=` | 分块读文件，base64 回传（二进制安全） |
+| GET | `/convergence?dir=` | OSZICAR 离子步能量 + **电子步 SCF** + OUTCAR 的 `FORCES: max atom, RMS` |
+| GET | `/task?dir=&ttl=` | 单任务全量（文件清单 + 结构 + **收敛（离子步 + 电子步）** + INCAR），一次 ssh 拿完 |
+
+### 收敛数据的两个口径（面板的「口径」下拉）
+
+| 口径 | 数据来源 | 取数脚本 |
+|---|---|---|
+| **离子步** | OSZICAR 的 `N F= ...` 汇总行 → 能量 E；OUTCAR 的 `FORCES: max atom, RMS` → 最大力/RMS 力，按离子步对齐 | `awk /^ *[0-9]+ +F=/` + `awk /FORCES: max atom, RMS/` |
+| **电子步（SCF）** | OSZICAR 的 `DAV:` / `RMM:` / `CG :` 行 → `[离子步, 电子步, E, dE, rms, rms(c)]` | `awk /^[A-Za-z]+ *:/`（先剥算法前缀再按空白切列） |
+
+> **为什么必须有电子步**：静态单点任务（`NSW=0`）只有 **1 个离子步**，离子步曲线等于空图；
+> 它们真正能看的是 SCF 收敛。面板遇到单离子步任务会**自动切到电子步口径** ——
+> 所以宿主半边不抽电子步时，这批任务会一律显示「无收敛数据（需 OSZICAR + OUTCAR）」（v19 修掉）。
 >
-> 没装 DSH？用 [`../standalone/`](../standalone/) 那份独立版即可，功能完全一样。
+> `/task` 的响应里是两个独立字段：`ionic: [[step, E, maxF, rmsF], …]` 与
+> `scf: [[istep, iel, E, dE, rms, rms(c)], …]`；旧面板不认识 `scf` 也不受影响（纯增量）。
+> 电子步抽取的 awk 没法在 Windows 上单测（本机没有 awk），所以它由
+> `test/live-smoke.mjs` 打真集群验证（会核对 OSZICAR 首行数值）。
 
-**相关**：[安装步骤（精简版）](INSTALL.md) · [主仓库说明](../README.md) · [安全模型](../SECURITY.md)
+### 任务状态（五态）
 
-## 一、它和独立版差在哪
+面板的「状态」列/色点由 `/scan` 带回的 **OUTCAR 尾部标记**判出来（**只读尾部 200 KB**——
+大 OUTCAR 全文 grep 会把扫描拖死；VASP 的正常收尾行与致命错误都在末尾）：
 
-| | **DSH 插件版**（本目录） | 独立版（`../standalone/`） |
-|---|---|---|
-| 面板在哪 | **DSH 侧栏**里的一个标签页（与对话并排 ✓） | 浏览器标签页 |
-| 怎么打开 | 侧栏底部常驻入口，点一下 ✓ | 输 `http://127.0.0.1:8787/` |
-| 数据通道 | 插件的 11 条命名路由（宿主半边在主进程里跑 ssh ✓） | 本地小服务的 11 条路由 |
-| 配置在哪 | DSH 的插件配置（`sshHost` / `roots` / …） | `config.json` |
-| 改宿主代码 | **必须重启 DSH** ✓（ESM 模块 + profile 缓存 ✓） | 重启那个服务（秒级 ✓） |
-| 额外好处 | 面板和 Agent **同屏**：让它读图、解释曲线、查文件时不用来回切窗 ✓ | 不用装 DSH ✓ |
-
-> 两半的分工：**宿主半边**（`lib/host-v7.js`，跑在 DSH 主进程，负责 ssh 取数与解析）·
-> **浏览器半边**（`lib/client.js`，跑在 DSH 界面里，负责侧栏入口）· **面板**（`assets/panel.html`，由宿主路由提供）。
-
-## 二、界面长什么样
-
-```
-DSH 侧栏底部（紧挨「设置」）        点一下 ↓
-┌──────────────────────────────────────────────────────────┐
-│ 侧栏标签页： VASP 任务面板                                 │
-│ ┌ 顶栏 ────────────────────────────────────────────────┐ │
-│ │ VASP 任务面板   实时·mycluster·56 任务  [根▾] 深度[8] [刷新] [导出▾] │
-│ ├ 左：任务树 ─┬ 中：图表区 ──────────────┬ 右：任务事实 ─┤ │
-│ │ ▸ proj1     │ 收敛曲线 能带 PDOS 能垒  │ 任务完成 ✓   │ │
-│ │ ▾ demo      │ 3D结构 文件 AIMD        │ rel_path …   │ │
-│ │   ▾ nf      │                         │ 元素 Li O Mn │ │
-│ │     • nf    │   （图/表随页签切换）     │ 离子步 1     │ │
-│ │             │                         │ 判定：…      │ │
-│ └─────────────┴─────────────────────────┴──────────────┘ │
-└──────────────────────────────────────────────────────────┘
-```
-- 左侧**任务树**默认收起（点目录展开 ✓），也可切「表」视图排序
-- 中间 7 个页签，每页都能单独**导出 PNG / CSV**
-- 右侧是**这个任务的事实与判定**（什么类型、跑了几步、有没有收敛证据 ✓）
-
-## 三、安装（3 步 + 一次重启）
-
-1. **放进 DSH**：把本目录放到 profile 的插件目录（目录名即插件 id `dsh-vasp-panel`），
-   或在 profile 里 `npm install <本仓库路径>/dsh-plugin`
-2. **启用**：DSH → 设置 → 插件 → 启用它（手写配置则加进 profile 的 `include:`）
-3. **重启 DSH** ✓ —— **这步不能省** ✗：宿主半边是 Node ESM 模块，首次加载/改动后必须重启才生效
-   （浏览器半边会随页面刷新生效 ✓）
-
-细节与 `PANEL_PATH` 的改法见 **[INSTALL.md](INSTALL.md)**。
-
-## 四、配置
-
-在 DSH 的插件配置里填（默认值见 `lib/host-v7.js` 的 `Config`）：
-
-| 键 | 含义 | 默认 |
-|---|---|---|
-| `sshHost` | ssh 目标：`user@host` 或 `~/.ssh/config` 里的别名 ✓ | `''` |
-| `roots` | **白名单**：面板只能读这些目录之下 ✓ | `[]` |
-| `defaultScanRoot` | 点「刷新」默认扫哪个 | 取 `roots[0]` |
-| `scanDepth` / 顶栏「深度」 | 扫描深度 1–16（每个根各自记忆 ✓） | 8 |
-| `maxReadBytes` | 单次读取上限 | 512 KB |
-| `maxImageBytes` | 图片预览上限 | 6 MB |
-| `token` | 留空 = 不鉴权（面板只在本机侧栏里 ✓） | `''` |
-
-> ⚠️ 还有一处**必须手改**：`lib/client.js` 顶部的 `PANEL_PATH` ✗ —— 要指向**你自己的** `panel.html` 绝对路径。
-> 原因：DSH 侧栏的网页标签页**硬拦一切本机地址** ✗（`http://127.0.0.1` 打不开 ✓），
-> 所以入口只能"把本地面板文件开进侧栏"，数据靠插件路由的 CORS 头跨域取 ✓。
-
-## 五、日常用法
-
-| 想做什么 | 怎么做 |
+| 面板状态 | 判据 |
 |---|---|
-| 换一批任务 | 顶栏「刷新」（重新扫描 `defaultScanRoot` ✓） |
-| 换根目录 | 顶栏下拉切换（只有一个根时下拉自动隐藏 ✓）；切换期间状态灯显示「取数中…」 |
-| 扫得更深 | 顶栏「深度」（VASP 常有 `nf/nf/nf` 尾链 ✓）；每个根各记一份 ✓ |
-| 只看某个元素/自旋 | 能带/PDOS 页的分元素开关与「自旋（镜像）」勾选 ✓ |
-| 能垒 X 轴口径不对 | 能垒页选另一种口径（累加距离 / 逐步差值 / 序号 ✓）或点反转 ✓ |
-| 要拿去写论文/汇报 | 「导出 ▾」：当前页 PNG（2× 白底）或 CSV；也可导全量 JSON ✓ |
-| 看某个文件 | 「文件」页：文本分块阅读 ✓；图片（png/jpg/gif/webp/bmp/svg）可直接预览 ✓ |
-| 看分子动力学 | 「AIMD」页：MSD（ps 窗口、过原点、双 D ✓）/ RDF（多元素对 ✓） |
+| `NO_OUTPUT_EVIDENCE` 未发现计算输出 | OUTCAR 是 0 字节 |
+| `ERROR_DETECTED` 检测到错误 | 尾部命中 `VERY BAD NEWS` / `Error EDDDAV` / `ZBRENT: fatal error` / `I REFUSE TO CONTINUE` / `BAD TERMINATION` / `Fatal error` / `LAPACK…failed` / `not enough space` / `Unable to open`；**或**没有收尾行且已停止写入 |
+| `TASK_COMPLETED` 任务完成 | 尾部有 `General timing and accounting`（VASP 正常收尾）。另有 `acc` 标记 `reached required accuracy`（弛豫收敛达标） |
+| `RUNNING` 正在运行 | 没有收尾行，但 OUTCAR 在 900 s 内还被更新过（`age` = 距 mtime 的秒数） |
+| `UNKNOWN` 待检查 | 兜底；内嵌快照（老数据只有 `acc`）仍按 `acc` 判，行为不变 |
 
-## 六、和 Agent 配合的三个真实场景
+实测环境实测（`/home/user/projects/demo` 39 个任务）：**完成 38 · 错误 1** —— 那个错误任务是
+`proj2/mg2`：`ZBRENT: fatal error in bracketing` → VASP 自己打了
+`I REFUSE TO CONTINUE WITH THIS SICK JOB ... BYE!!!` 就退出了（没有收尾行），
+在旧面板里它一直显示「待检查」。
 
-1. **"这个任务收敛了吗？"** —— 面板右侧已给出判定与证据（OUTCAR 收尾行 / 是否达标 ✓），
-   你可以直接让 Agent 去 `OUTCAR`/`OSZICAR` 复核，它和你看的是同一份文件 ✓。
-2. **"能带这个形状正常吗？"** —— 面板把高对称点、自旋分栏都标好了 ✓，
-   让 Agent 去读 `KLABELS`/`KPOINTS` 就能解释 X 轴为什么这么排 ✓。
-3. **"帮我从这些任务里找某个参数的"** —— 面板负责"看"，Agent 负责"翻"，各做各擅长的 ✓。
+> 局限：只看尾部 200 KB，所以"错误行出现得很早、之后又写了 >200 KB 正常输出"的任务会漏判（实际极少）。
+> `RUNNING` 用 900 s 静默窗口，簇上 mtime 有滞后时可能把刚跑完的算成运行中（最多 15 分钟）。
 
-## 七、排错
+**安全边界**：`root` / `dir` / `file` 必须是绝对路径、不含 `..`、且落在配置的 `roots` 白名单下。
+`/home/shared` 默认会被 400 拒绝。
 
-| 现象 | 原因 / 处理 |
-|---|---|
-| 侧栏底部**没有**入口 | 浏览器半边没加载：确认插件已启用；页面刷新一次；看控制台有没有 `[dsh-vasp-panel]` 的告警 ✓ |
-| 点入口没反应 / 打不开面板 | `PANEL_PATH` 不对（要绝对路径 ✓）；或 `betterSidebar`（dsh-better-sidebar）没装 ✓ |
-| 面板显示「未连接插件 · HTTP 404」 | 宿主半边没起来：**重启 DSH** ✓；再看 `/plugins/dsh-vasp-panel/diag` 是否列出 11 条路由 ✓ |
-| 改了 `lib/host-v7.js` 没生效 | **必须重启 DSH** ✓（ESM 模块缓存 + profile bundle 缓存 ✓，两层都要清 ✓） |
-| 任务列表空 | `roots` 写错，或深度不够 ✓ |
-| 图片不显示 | 侧栏对 `data:`/`blob:` 有限制 ✗，本插件用 **canvas 解码**绕过 ✓；仍然失败时看图片是否超过 `maxImageBytes` ✓ |
-| 面板样式/脚本怪怪的 | 侧栏标签页是 `file://`，**不会热更** ✗ → 关掉标签页重开（或 Ctrl+R ✓） |
+**性能**：一次 ssh 往返约 1.2 s（实测扫 30 个任务）。所有远端操作合并成**一次** ssh
+（脚本 base64 后喂给远端 bash），结果带 15 s TTL 缓存。
 
-## 八、开发与测试
+## 配置
+
+```yaml
+- insert:
+    - id: vasp-panel
+      name: dsh-vasp-scope
+      config:
+        sshHost: mycluster                      # ~/.ssh/config 里的别名，或 user@host
+        roots: ['/home/user/projects/demo']        # 路径白名单（安全边界）
+        defaultScanRoot: /home/user/projects/demo
+        maxReadBytes: 524288
+```
+
+## 安装
 
 ```bash
-node --test test/host.test.mjs     # 宿主半边：路由注册、/scan /task 解析、鉴权等（40 项）
-node --test test/client.test.mjs   # 浏览器半边：模块契约、槽位注册、页面不挂（9 项）
-node test/live-smoke.mjs           # 打实测环境的冒烟（需先配好 sshHost / roots）
-```
-两半都**刻意不依赖 DSH 内部包** ✓（`schemastery` 走动态 import + 最小 shim ✓），
-所以 **clone 下来就能跑测试** ✓，不必先装 DSH ✓。
-
-目录：
-```
-lib/host-v7.js      宿主半边：11 条路由 + 远端脚本编排 + 解析（与独立版同一份实现 ✓）
-lib/plot-script.js  远端 shell + awk 批处理脚本与其输出解析（一次 ssh 取全部谱图 ✓）
-lib/client.js       浏览器半边：侧栏入口（slots 槽位 ✓）+ PANEL_PATH
-assets/panel.html   面板本体（单文件，无外部依赖 ✓）
-test/               宿主 / 客户端单测 + 实测环境冒烟
-tools/              版本化小工具
+dsh plugin --profile desktop add <本目录>
 ```
 
-## 九、已知限制
+或手工：在 profile 的 `package.json` 里加依赖 + 把 `dsh-vasp-scope` 加进
+`dsh.profile.bundles`，然后 `pnpm install`。
 
-- **没有 fat band / 投影能带**（`PBAND_*` 12 列，线宽 ∝ 权重）—— 待做 ✓
-- `PANEL_PATH` 目前要**手改一行** ✗（计划改成插件配置项 ✓）
-- 宿主半边的**真实环境验证只能在 DSH 内做** ✓（外部只能跑单测 ✓）
-- 没有 CI（计划加 GitHub Actions 跑上面两条测试 ✓）
+> ⚠️ 本机 `C:` 只剩 ~70 MB，pnpm 安装会 `ENOSPC`。装之前需要先腾空间。
+
+## 测试
+
+```bash
+# 宿主半边单测（32 项，不需要连集群：sshRun / tokenFile 可注入）
+node --test test/host.test.mjs
+
+# 浏览器半边单测（20 项，DOM/服务桩；不需要浏览器）
+node --test test/client.test.mjs
+
+# 实测环境冒烟（会真连 sshHost）
+node test/live-smoke.mjs
+```
+
+实测环境冒烟实测：`/home/user/projects/demo` 下 **30 个** VASP 任务（1216 ms），
+其中 14 个是 `proj1/mno` 弹性常数应变序列 —— 这些在只手工拉了 16 个的面板里是没有的。

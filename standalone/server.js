@@ -50,9 +50,9 @@ const srv = http.createServer((req, res) => {
   try { seg = new URL(req.url || '/', 'http://localhost').pathname } catch (_) {}
   /* 兼容两种调用方式：
      · 面板在 http 同源下用根路径： /ping  /scan  /read ...
-     · 面板里也可能带 DSH 的插件前缀（写死在 UI 文案/自检里）： /plugins/dsh-vasp-panel/ping ... */
+     · 面板里也可能带 DSH 的插件前缀（写死在 UI 文案/自检里）： /plugins/dsh-vasp-scope/ping ... */
   const name = seg.replace(/^\/+/, '')
-    .replace(/^plugins\/dsh-vasp-panel\/?/, '')
+    .replace(/^plugins\/dsh-vasp-scope\/?/, '')
     .split('/')[0]
 
   /* 面板本体： / 或 /panel */

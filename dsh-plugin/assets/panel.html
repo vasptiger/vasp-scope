@@ -3371,7 +3371,7 @@ function renderOffline(){
     + '<b style="color:var(--st-NO_OUTPUT_EVIDENCE)">未连接插件 · 没有数据</b><br>'
     + '<span style="color:var(--label-2);font-size:12px">这个面板的数据全部来自插件（远程集群走 SSH）。</span><br>'
     + (why ? '<span style="color:var(--label-3);font-size:12px">' + why + '</span><br>' : '')
-    + '<span style="color:var(--label-3);font-size:12px">自检：GET /plugins/dsh-vasp-panel/ping</span><br>'
+    + '<span style="color:var(--label-3);font-size:12px">自检：GET /plugins/dsh-vasp-scope/ping</span><br>'
     + '<span style="color:var(--label-3);font-size:12px">插件由 DSH profile 加载；改过宿主代码后需要重启 DSH。</span><br>'
     + '<button class="btn" id="retryConn" style="margin-top:10px">重试连接</button>'
     + '</div>'
@@ -3442,7 +3442,7 @@ $('viewSeg').onclick = e => { const b=e.target.closest('button'); if(!b) return
    连不上就静默回落到内嵌快照 —— 面板在任何情况下都要能用。 */
 const API_BASE = ((typeof location !== 'undefined' && location.protocol === 'file:')
     ? 'http://127.0.0.1:19387' : '')
-  + '/plugins/dsh-vasp-panel'
+  + '/plugins/dsh-vasp-scope'
 
 /* 令牌：插件路由绕过 DSH 的 fallback 鉴权，所以插件自己校验令牌。
    三个来源按优先级取第一个非空：URL 的 ?token= → 上次存下的 → 插件注入的 window.__VASP_TOKEN__。
@@ -3458,7 +3458,7 @@ const VASP_TOKEN = (() => {
 
 /* 本文档的构建标记（标题栏可见，用来一眼确认侧栏里那份是哪一版）。
    按用户要求 v25 起**去掉了「有新版本 · 重载」自查功能**：不再向插件路由比对版本。 */
-const BUILD = 'v126 · 2026-10-12 13:4x'
+const BUILD = 'v127 · 2026-10-12 14:4x'
 /* ===== 首屏策略：实时优先（v23） =====
    内嵌快照（面板文件里自带的旧数据）现在只当**兜底**：连不上插件、超时、或用户手动选择时才用。
    正常情况（插件在跑）首屏直接是实时数据 —— 不会再先闪一版旧画面。 */
@@ -3676,7 +3676,7 @@ function paintLive(){
     el.textContent = '未连接插件' + (LIVE.note ? ` · ${LIVE.note}` : '')
     el.style.color = 'var(--st-NO_OUTPUT_EVIDENCE)'
     el.title = (LIVE.err ? ('插件未连上：' + LIVE.err + '\n') : '未连接插件\n')
-      + '面板不缓存任务数据 —— 请确认插件已启用（GET /plugins/dsh-vasp-panel/ping）；改过宿主代码需重启 DSH'
+      + '面板不缓存任务数据 —— 请确认插件已启用（GET /plugins/dsh-vasp-scope/ping）；改过宿主代码需重启 DSH'
   }
 }
 /* 启动时尝试连插件；连不上就保持内嵌快照，不打扰用户 */

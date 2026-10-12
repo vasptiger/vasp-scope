@@ -1,12 +1,12 @@
-# dsh-vasp-panel bundle patch: mounts the panel plugin into a dsh profile.
+# dsh-vasp-scope bundle patch: mounts the panel plugin into a dsh profile.
 #
-# 宿主半边把【远程集群】的 VASP 任务目录经 SSH 暴露成 /plugins/dsh-vasp-panel/* 路由；
+# 宿主半边把【远程集群】的 VASP 任务目录经 SSH 暴露成 /plugins/dsh-vasp-scope/* 路由；
 # 浏览器半边注册侧栏入口 + 右侧面板（面板本体是 assets/panel.html，用 iframe 嵌）。
 #
 # 安装：dsh plugin --profile <name> add <本目录>   （或 profile 里 pnpm add 后加进 bundles）
 - insert:
     - id: vasp-panel
-      name: dsh-vasp-panel
+      name: dsh-vasp-scope
       config:
         # SSH 目标（~/.ssh/config 里的别名，或 user@host）。留空 = 不改远程，只用内嵌快照。
         sshHost: mycluster

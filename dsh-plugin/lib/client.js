@@ -1,5 +1,5 @@
 /**
- * dsh-vasp-panel · 浏览器半边（手写，无需打包）—— 待合并版（暂存）
+ * dsh-vasp-scope · 浏览器半边（手写，无需打包）—— 待合并版（暂存）
  *
  * 契约（与 dsh-better-sidebar / dsh-vaspflow 一致）：
  *   window.__ModuleLoader__.load({ id: <包名>, factory: (require) => module.exports })
@@ -13,7 +13,7 @@
  *
  * 点击动作 = 把本地面板文件开成侧栏里的一个标签页：
  *   ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\dsh\\vasp-panel.html')
- * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-panel/panel：
+ * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-scope/panel：
  *   侧栏浏览器（better-sidebar 的网页 tab）硬编码拦掉一切本机地址，
  *   所以入口只负责「把本地面板文件开进侧栏」，面板自身用 file:// / 沙箱 iframe 渲染，
  *   靠插件路由的 CORS 头跨域取数（宿主半边已发 access-control-allow-origin: *）。
@@ -21,11 +21,11 @@
  * 安全：apply() 整体 try/catch —— 本文件任何异常都不许冒泡到外壳，
  *      否则会像 v0.1.0 那样把整页拖挂。
  *
- * 已在隔离探针 dsh-vasp-panel-probe 上验证通过（2026-10-08）：
+ * 已在隔离探针 dsh-vasp-scope-probe 上验证通过（2026-10-08）：
  *   宿主/客户端两半都加载、槽位占用 active:true、入口渲染、页面不挂、点击开进侧栏。
  */
 (function () {
-  var ID = 'dsh-vasp-panel';
+  var ID = 'dsh-vasp-scope';
   var PANEL_PATH = 'D:\\dsh\\vasp-panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
   var ENTRY_ATTR = 'data-dsh-vasppanel-entry';
 
@@ -53,19 +53,19 @@
           try {
             var bs = svc(ctx, 'betterSidebar');
             if (!bs || typeof bs.openFile !== 'function') {
-              try { console.warn('[dsh-vasp-panel] 需要 dsh-better-sidebar 才能把面板开进侧栏'); } catch (_) { /* noop */ }
+              try { console.warn('[dsh-vasp-scope] 需要 dsh-better-sidebar 才能把面板开进侧栏'); } catch (_) { /* noop */ }
               return;
             }
             var snap = null;
             try { snap = bs.getSnapshot(); } catch (_) { /* noop */ }
             var sessionId = snap && snap.sessionId;
             if (!sessionId) {
-              try { console.warn('[dsh-vasp-panel] 当前没有活动会话，先选一个会话再点'); } catch (_) { /* noop */ }
+              try { console.warn('[dsh-vasp-scope] 当前没有活动会话，先选一个会话再点'); } catch (_) { /* noop */ }
               return;
             }
             bs.openFile({ sessionId: sessionId }, PANEL_PATH, 'VASP 任务面板');
           } catch (e) {
-            try { console.error('[dsh-vasp-panel] 打开面板失败:', e); } catch (_) { /* noop */ }
+            try { console.error('[dsh-vasp-scope] 打开面板失败:', e); } catch (_) { /* noop */ }
           }
         }
 
@@ -134,7 +134,7 @@
               });
             }, ID + ': sidebar footer entry');
           } catch (e) {
-            try { console.error('[dsh-vasp-panel] client half failed:', e); } catch (_) { /* noop */ }
+            try { console.error('[dsh-vasp-scope] client half failed:', e); } catch (_) { /* noop */ }
           }
           return function () { /* 槽位注册由 ctx.effect 负责回收 */ };
         }
@@ -146,6 +146,6 @@
       },
     });
   } catch (e) {
-    try { console.error('[dsh-vasp-panel] ModuleLoader.load failed:', e); } catch (_) { /* noop */ }
+    try { console.error('[dsh-vasp-scope] ModuleLoader.load failed:', e); } catch (_) { /* noop */ }
   }
 })();
