@@ -1,5 +1,5 @@
 /**
- * dsh-vasp-scope · 浏览器半边（手写，无需打包）—— 待合并版（暂存）
+ * dsh-vasp-panel · 浏览器半边（手写，无需打包）—— 待合并版（暂存）
  *
  * 契约（与 dsh-better-sidebar / dsh-vaspflow 一致）：
  *   window.__ModuleLoader__.load({ id: <包名>, factory: (require) => module.exports })
@@ -14,8 +14,8 @@
  * 点击动作 = 把本地面板文件开成侧栏里的一个标签页：
  *   ctx.get('betterSidebar').openFile({ sessionId }, PANEL_PATH)
  *   其中 PANEL_PATH 来自插件配置 panelPath（仓库里不写死绝对路径 ✗）；
- *   没配就向宿主 GET /plugins/dsh-vasp-scope/ping 索取 panelPath ✓
- * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-scope/panel：
+ *   没配就向宿主 GET /plugins/dsh-vasp-panel/ping 索取 panelPath ✓
+ * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-panel/panel：
  *   侧栏浏览器（better-sidebar 的网页 tab）硬编码拦掉一切本机地址，
  *   所以入口只负责「把本地面板文件开进侧栏」，面板自身用 file:// / 沙箱 iframe 渲染，
  *   靠插件路由的 CORS 头跨域取数（宿主半边已发 access-control-allow-origin: *）。
@@ -23,11 +23,11 @@
  * 安全：apply() 整体 try/catch —— 本文件任何异常都不许冒泡到外壳，
  *      否则会像 v0.1.0 那样把整页拖挂。
  *
- * 已在隔离探针 dsh-vasp-scope-probe 上验证通过（2026-10-08）：
+ * 已在隔离探针 dsh-vasp-panel-probe 上验证通过（2026-10-08）：
  *   宿主/客户端两半都加载、槽位占用 active:true、入口渲染、页面不挂、点击开进侧栏。
  */
 (function () {
-  var ID = 'dsh-vasp-scope';
+  var ID = 'dsh-vasp-panel';
   var PANEL_PATH = 'assets/panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
   var ENTRY_ATTR = 'data-dsh-vasppanel-entry';
 
@@ -55,19 +55,19 @@
           try {
             var bs = svc(ctx, 'betterSidebar');
             if (!bs || typeof bs.openFile !== 'function') {
-              try { console.warn('[dsh-vasp-scope] 需要 dsh-better-sidebar 才能把面板开进侧栏'); } catch (_) { /* noop */ }
+              try { console.warn('[dsh-vasp-panel] 需要 dsh-better-sidebar 才能把面板开进侧栏'); } catch (_) { /* noop */ }
               return;
             }
             var snap = null;
             try { snap = bs.getSnapshot(); } catch (_) { /* noop */ }
             var sessionId = snap && snap.sessionId;
             if (!sessionId) {
-              try { console.warn('[dsh-vasp-scope] 当前没有活动会话，先选一个会话再点'); } catch (_) { /* noop */ }
+              try { console.warn('[dsh-vasp-panel] 当前没有活动会话，先选一个会话再点'); } catch (_) { /* noop */ }
               return;
             }
             bs.openFile({ sessionId: sessionId }, PANEL_PATH, 'VASP 任务面板');
           } catch (e) {
-            try { console.error('[dsh-vasp-scope] 打开面板失败:', e); } catch (_) { /* noop */ }
+            try { console.error('[dsh-vasp-panel] 打开面板失败:', e); } catch (_) { /* noop */ }
           }
         }
 
@@ -127,9 +127,9 @@
       else {
         /* 兜底：向宿主讨真实路径 ✓（宿主用 HERE/../assets/panel.html 算出 ✓，与 /panel 同一算法）
            —— 侧栏的网页 tab 拦本机地址 ✗，所以这里只能拿"文件路径"，不能拿 URL ✓ */
-        console.warn('[dsh-vasp-scope] 未配置 panelPath，改为向宿主索取…');
+        console.warn('[dsh-vasp-panel] 未配置 panelPath，改为向宿主索取…');
         try {
-          fetch('/plugins/dsh-vasp-scope/ping')
+          fetch('/plugins/dsh-vasp-panel/ping')
             .then(function (r) { return r.json(); })
             .then(function (j) { if (j && j.panelPath) PANEL_PATH = j.panelPath; })
             .catch(function () { /* noop */ });
@@ -153,7 +153,7 @@
               });
             }, ID + ': sidebar footer entry');
           } catch (e) {
-            try { console.error('[dsh-vasp-scope] client half failed:', e); } catch (_) { /* noop */ }
+            try { console.error('[dsh-vasp-panel] client half failed:', e); } catch (_) { /* noop */ }
           }
           return function () { /* 槽位注册由 ctx.effect 负责回收 */ };
         }
@@ -165,6 +165,6 @@
       },
     });
   } catch (e) {
-    try { console.error('[dsh-vasp-scope] ModuleLoader.load failed:', e); } catch (_) { /* noop */ }
+    try { console.error('[dsh-vasp-panel] ModuleLoader.load failed:', e); } catch (_) { /* noop */ }
   }
 })();

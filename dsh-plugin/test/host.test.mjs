@@ -1,5 +1,5 @@
 /**
- * dsh-vasp-scope 宿主半边测试。
+ * dsh-vasp-panel 宿主半边测试。
  *
  * 不需要真的连集群：`createHandlers(cfg, { sshRun })` 允许注入假的 ssh 执行器，
  * 于是可以断言"远端返回什么文本 → 路由吐什么 JSON"。
@@ -41,14 +41,14 @@ test('package.json：不能带 UTF-8 BOM（JSON.parse 会直接失败，插件�
   const raw = readFileSync(new URL('../package.json', import.meta.url));
   assert.ok(!(raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF), 'package.json 带 UTF-8 BOM');
   const j = JSON.parse(raw.toString('utf8'));
-  assert.equal(j.name, 'dsh-vasp-scope');
+  assert.equal(j.name, 'dsh-vasp-panel');
   assert.equal(j.main, 'lib/host-v7.js');
   assert.equal(j.exports['./client'], './lib/client.js', 'exports 指向客户端半边');
   assert.equal(j.dsh.client.platform, 'web');
 });
 
 test('导出契约：name / inject / Config / apply', () => {
-  assert.equal(host.name, 'dsh-vasp-scope');
+  assert.equal(host.name, 'dsh-vasp-panel');
   assert.deepEqual(host.inject, []);
   assert.equal(typeof host.apply, 'function');
   assert.equal(typeof host.Config, 'function', 'Config 应是 schemastery 的工厂');
@@ -63,11 +63,11 @@ test('路径白名单：拒绝越界与相对路径', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: '', stderr: '' }) });
   for (const bad of ['/etc/passwd', '/home/user/projects/demo/../../etc', 'relative/path', '/home/user']) {
     const res = fakeRes();
-    await h.scan(req('/plugins/dsh-vasp-scope/scan?root=' + encodeURIComponent(bad)), res);
+    await h.scan(req('/plugins/dsh-vasp-panel/scan?root=' + encodeURIComponent(bad)), res);
     assert.equal(res.code, 400, `应拒绝: ${bad}`);
   }
   const res = fakeRes();
-  await h.list(req('/plugins/dsh-vasp-scope/list?dir=' + encodeURIComponent('/home/user/projects/demoX')), res);
+  await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + encodeURIComponent('/home/user/projects/demoX')), res);
   assert.equal(res.code, 400, '前缀相似但不在白名单内的目录也要拒绝');
 });
 
@@ -84,7 +84,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
   };
   const h = mk(CFG, { sshRun });
   const r1 = fakeRes();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan'), r1);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan'), r1);
   const b1 = bodyOf(r1);
   assert.equal(r1.code, 200);
   assert.equal(b1.count, 2);
@@ -93,7 +93,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
   assert.equal(b1.cached, false);
 
   const r2 = fakeRes();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan'), r2);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan'), r2);
   assert.equal(bodyOf(r2).cached, true, '第二次应命中缓存');
   assert.equal(calls, 1, '缓存命中不应再走 ssh');
 });
@@ -101,7 +101,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
 test('scan：远端无此目录 → 404', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: '__NOROOT__\n', stderr: '' }) });
   const res = fakeRes();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan'), res);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan'), res);
   assert.equal(res.code, 404);
 });
 
@@ -119,7 +119,7 @@ test('scan：带回元素/计数/INCAR 子集/产物文件/状态标记（面板
   ].join('\n');
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout, stderr: '' }) });
   const res = fakeRes();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan'), res);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan'), res);
   const b = bodyOf(res);
   assert.equal(b.tasks[0].els, 'Li O Mn');
   assert.equal(b.tasks[0].cnt, '1 32 16');
@@ -204,7 +204,7 @@ test('list：全量文件清单（不设白名单）', async () => {
   });
   const h = mk(CFG, { sshRun });
   const res = fakeRes();
-  await h.list(req('/plugins/dsh-vasp-scope/list?dir=' + encodeURIComponent('/home/user/projects/demo/proj2/mg1')), res);
+  await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + encodeURIComponent('/home/user/projects/demo/proj2/mg1')), res);
   const b = bodyOf(res);
   assert.equal(b.count, 3);
   assert.deepEqual(b.files.map(f => f.name), ['CONTCAR', 'INCAR', '4473.user.log']);
@@ -223,7 +223,7 @@ test('read：base64 解码 + offset/limit 生效 + 上限封顶', async () => {
   };
   const h = mk(CFG, { sshRun });
   const res = fakeRes();
-  await h.read(req('/plugins/dsh-vasp-scope/read?file=' + encodeURIComponent('/home/user/projects/demo/a/OUTCAR') + '&offset=100&limit=99999'), res);
+  await h.read(req('/plugins/dsh-vasp-panel/read?file=' + encodeURIComponent('/home/user/projects/demo/a/OUTCAR') + '&offset=100&limit=99999'), res);
   const b = bodyOf(res);
   assert.equal(b.text, payload, 'base64 应解回原文');
   assert.equal(b.size, 24512532);
@@ -234,7 +234,7 @@ test('read：base64 解码 + offset/limit 生效 + 上限封顶', async () => {
 test('read：文件不存在 → 404', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: '__NOFILE__\n', stderr: '' }) });
   const res = fakeRes();
-  await h.read(req('/plugins/dsh-vasp-scope/read?file=' + encodeURIComponent('/home/user/projects/demo/a/X')), res);
+  await h.read(req('/plugins/dsh-vasp-panel/read?file=' + encodeURIComponent('/home/user/projects/demo/a/X')), res);
   assert.equal(res.code, 404);
 });
 
@@ -247,7 +247,7 @@ test('convergence：解析 I/F 行', async () => {
   });
   const h = mk(CFG, { sshRun });
   const res = fakeRes();
-  await h.convergence(req('/plugins/dsh-vasp-scope/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
+  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   const b = bodyOf(res);
   assert.equal(b.ionic.length, 2);
   assert.deepEqual(b.ionic[1], [2, -370.89224]);
@@ -260,7 +260,7 @@ test('convergence：解析 I/F 行', async () => {
 test('ssh 失败 → 502 且带上 stderr 摘要', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 255, stdout: '', stderr: 'Permission denied (publickey)' }) });
   const res = fakeRes();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan'), res);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan'), res);
   assert.equal(res.code, 502);
   assert.match(bodyOf(res).detail, /Permission denied/);
 });
@@ -284,7 +284,7 @@ test('apply：桩 ctx 下注册全部路由', () => {
   };
   host.apply(ctx, new host.Config({}));
   const want = ['diag', 'ping', 'panel', 'hello', 'scan', 'list', 'read', 'convergence', 'task', 'plot', 'img']
-    .map(s => '/plugins/dsh-vasp-scope/' + s);
+    .map(s => '/plugins/dsh-vasp-panel/' + s);
   for (const w of want) assert.ok(registered.includes(w), '缺少路由 ' + w);
   assert.equal(registered.length, want.length);
   assert.equal(services[0][0], 'internal/service', '应监听 internal/service 以等待 webServer 就绪');
@@ -314,7 +314,7 @@ test('apply：webServer 后到时靠 internal/service 事件补注册', () => {
 test('ping 返回配置摘要', async () => {
   const h = mk(CFG, {});
   const res = fakeRes();
-  await h.ping(req('/plugins/dsh-vasp-scope/ping'), res);
+  await h.ping(req('/plugins/dsh-vasp-panel/ping'), res);
   const b = bodyOf(res);
   assert.equal(b.ok, true);
   assert.equal(b.sshHost, 'mycluster');
@@ -452,7 +452,7 @@ test('convergence 路由：也把电子步 scf 返回给调用方', async () => 
                   'S 1 2 -484.062419900 -1.78e-7 6.18e-05 null', 'F 0.1 0.05', '__END__'].join('\n');
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout, stderr: '' }) });
   const res = fakeRes();
-  await h.convergence(req('/plugins/dsh-vasp-scope/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/sys1/nf/nf')), res);
+  await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + encodeURIComponent('/home/user/projects/demo/demo/sys1/nf/nf')), res);
   assert.equal(res.code, 200);
   const b = bodyOf(res);
   assert.equal(b.nScf, 2);
@@ -464,7 +464,7 @@ test('convergence 路由：也把电子步 scf 返回给调用方', async () => 
 test('task 路由：注入假 ssh，校验返回结构', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: TASK_OUT, stderr: '' }) });
   const res = fakeRes();
-  await h.task(req('/plugins/dsh-vasp-scope/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   assert.equal(res.code, 200);
   const b = bodyOf(res);
   assert.equal(b.rel, 'demo/mg/nf');
@@ -484,7 +484,7 @@ test('task 路由：注入假 ssh，校验返回结构', async () => {
 test('task 路由：老面板（不认识 scf）也照样能用 —— 多出来的字段是纯增量', async () => {
   const h = mk(CFG, { sshRun: async () => ({ code: 0, stdout: TASK_OUT, stderr: '' }) });
   const res = fakeRes();
-  await h.task(req('/plugins/dsh-vasp-scope/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf')), res);
   const b = bodyOf(res);
   assert.equal(b.ionic.length, 2, 'ionic 结构未变');
   assert.deepEqual(Object.keys(b).filter(k => /scf/i.test(k)), ['scf', 'nScf'], '只新增 scf/nScf 两个键');
@@ -493,7 +493,7 @@ test('task 路由：老面板（不认识 scf）也照样能用 —— 多出来
 test('task 路由：ttl=0 绕过缓存', async () => {
   let calls = 0;
   const h = mk(CFG, { sshRun: async () => { calls++; return { code: 0, stdout: TASK_OUT, stderr: '' }; } });
-  const url = '/plugins/dsh-vasp-scope/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf') + '&ttl=0';
+  const url = '/plugins/dsh-vasp-panel/task?dir=' + encodeURIComponent('/home/user/projects/demo/demo/mg/nf') + '&ttl=0';
   await h.task(req(url), fakeRes());
   await h.task(req(url), fakeRes());
   assert.equal(calls, 2, 'ttl=0 时不应命中缓存');
@@ -502,7 +502,7 @@ test('task 路由：ttl=0 绕过缓存', async () => {
 test('CORS：响应必须带 access-control-allow-origin（面板从 file:// 取数）', async () => {
   const h = mk(CFG, {});
   const res = fakeRes();
-  await h.ping(req('/plugins/dsh-vasp-scope/ping'), res);
+  await h.ping(req('/plugins/dsh-vasp-panel/ping'), res);
   assert.equal(res.headers['access-control-allow-origin'], '*');
 });
 
@@ -541,7 +541,7 @@ const reqH = (url, headers) => ({ url, headers });
 test('鉴权：未配令牌时不拦截（向后兼容）', async () => {
   const h = mk(CFG, {});
   const res = fakeRes();
-  await h.ping(req('/plugins/dsh-vasp-scope/ping'), res);
+  await h.ping(req('/plugins/dsh-vasp-panel/ping'), res);
   assert.equal(res.code, 200);
 });
 
@@ -549,7 +549,7 @@ test('鉴权：配了令牌 → 不带令牌一律 401', async () => {
   const h = mk(CFG_TOKEN, {});
   for (const url of ['/ping', '/scan', '/list?dir=/x', '/read?file=/x', '/task?dir=/x', '/panel', '/diag', '/hello']) {
     const res = fakeRes();
-    await h[url.split('?')[0].slice(1) === '' ? 'ping' : url.split('?')[0].slice(1)](req('/plugins/dsh-vasp-scope' + url), res);
+    await h[url.split('?')[0].slice(1) === '' ? 'ping' : url.split('?')[0].slice(1)](req('/plugins/dsh-vasp-panel' + url), res);
     assert.equal(res.code, 401, `应拦截: ${url}`);
     const b = bodyOf(res);
     assert.equal(b.error, 'authentication required');
@@ -560,14 +560,14 @@ test('鉴权：配了令牌 → 不带令牌一律 401', async () => {
 test('鉴权：?token= 正确则放行', async () => {
   const h = mk(CFG_TOKEN, {});
   const res = fakeRes();
-  await h.ping(req('/plugins/dsh-vasp-scope/ping?token=T0KEN-abc123'), res);
+  await h.ping(req('/plugins/dsh-vasp-panel/ping?token=T0KEN-abc123'), res);
   assert.equal(res.code, 200);
 });
 
 test('鉴权：请求头 x-vasp-token 正确则放行（面板用的是这条）', async () => {
   const h = mk(CFG_TOKEN, {});
   const res = fakeRes();
-  await h.ping(reqH('/plugins/dsh-vasp-scope/ping', { 'x-vasp-token': 'T0KEN-abc123' }), res);
+  await h.ping(reqH('/plugins/dsh-vasp-panel/ping', { 'x-vasp-token': 'T0KEN-abc123' }), res);
   assert.equal(res.code, 200);
 });
 
@@ -575,7 +575,7 @@ test('鉴权：令牌错误 → 401', async () => {
   const h = mk(CFG_TOKEN, { sshRun: async () => ({ code: 0, stdout: '', stderr: '' }) });
   for (const bad of ['?token=wrong', '?token=', '?token=T0KEN-abc12']) {
     const res = fakeRes();
-    await h.scan(req('/plugins/dsh-vasp-scope/scan' + bad), res);
+    await h.scan(req('/plugins/dsh-vasp-panel/scan' + bad), res);
     assert.equal(res.code, 401, `应拦截: ${bad}`);
   }
 });
@@ -584,12 +584,12 @@ test('鉴权：非回环 Host 一律拒绝（防 DNS rebinding），即使令牌
   const h = mk(CFG_TOKEN, {});
   for (const badHost of ['evil.com', 'evil.com:19387', '192.168.1.5:19387']) {
     const res = fakeRes();
-    await h.ping(reqH('/plugins/dsh-vasp-scope/ping?token=T0KEN-abc123', { host: badHost, 'x-vasp-token': 'T0KEN-abc123' }), res);
+    await h.ping(reqH('/plugins/dsh-vasp-panel/ping?token=T0KEN-abc123', { host: badHost, 'x-vasp-token': 'T0KEN-abc123' }), res);
     assert.equal(res.code, 401, `应拒绝 Host: ${badHost}`);
   }
   for (const goodHost of ['127.0.0.1:19387', 'localhost:19387', '[::1]:19387']) {
     const res = fakeRes();
-    await h.ping(reqH('/plugins/dsh-vasp-scope/ping', { host: goodHost, 'x-vasp-token': 'T0KEN-abc123' }), res);
+    await h.ping(reqH('/plugins/dsh-vasp-panel/ping', { host: goodHost, 'x-vasp-token': 'T0KEN-abc123' }), res);
     assert.equal(res.code, 200, `应放行 Host: ${goodHost}`);
   }
 });
@@ -597,11 +597,11 @@ test('鉴权：非回环 Host 一律拒绝（防 DNS rebinding），即使令牌
 test('鉴权：/panel 也受保护，且带令牌时把令牌注入页面', async () => {
   const h = mk(CFG_TOKEN, {});
   const deny = fakeRes();
-  await h.panel(req('/plugins/dsh-vasp-scope/panel'), deny);
+  await h.panel(req('/plugins/dsh-vasp-panel/panel'), deny);
   assert.equal(deny.code, 401, '/panel 不该裸奔');
 
   const okRes = fakeRes();
-  await h.panel(req('/plugins/dsh-vasp-scope/panel?token=T0KEN-abc123'), okRes);
+  await h.panel(req('/plugins/dsh-vasp-panel/panel?token=T0KEN-abc123'), okRes);
   assert.equal(okRes.code, 200);
   assert.match(okRes.body, /window\.__VASP_TOKEN__="T0KEN-abc123"/, '应注入令牌');
   assert.match(okRes.body, /<html/, '注入后仍是完整面板');

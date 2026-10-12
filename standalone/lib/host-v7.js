@@ -1,5 +1,5 @@
 /**
- * dsh-vasp-scope · 宿主半边
+ * dsh-vasp-panel · 宿主半边
  *
  * 把【远程集群】上的 VASP 任务目录经 SSH 暴露成 HTTP 路由。
  *
@@ -8,7 +8,7 @@
  * 这样对 /home/shared 那种 `user:user:--x`（可进入、不可枚举）的 ACL 也成立：
  * 给精确路径能读，不依赖列目录。
  *
- * 路由（前缀 /plugins/dsh-vasp-scope/*）：
+ * 路由（前缀 /plugins/dsh-vasp-panel/*）：
  *   GET  /ping                             → { ok, sshHost, roots }
  *   GET  /panel                            → 面板 HTML（assets/panel.html）
  *   POST /scan?root=&maxDepth=             → root 下所有含 OUTCAR 的任务目录
@@ -20,7 +20,7 @@
  *   · 所有远端操作合并成【一次】ssh（base64 → bash 通道，已验证稳定）
  *   · 结果在宿主侧带 TTL 缓存
  *
- * @module dsh-vasp-scope
+ * @module dsh-vasp-panel
  */
 import { execFile } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
@@ -42,7 +42,7 @@ if (!z) {
   }
 }
 
-export const name = 'dsh-vasp-scope';
+export const name = 'dsh-vasp-panel';
 export const inject = [];
 
 export const Config = z.object({
@@ -56,7 +56,7 @@ export const Config = z.object({
 });
 
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'];
-const ROUTE = '/plugins/dsh-vasp-scope';
+const ROUTE = '/plugins/dsh-vasp-panel';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ------------------------------------------------------------------ 工具
@@ -111,7 +111,7 @@ function safePath(p, roots) {
  * 鉴权。
  *
  * 背景：`webServer.register()` 的命名路由**天然绕过** DSH fallback（SPA）那层的鉴权
- * —— 实测 `GET /` 返回 401，而 `GET /plugins/dsh-vasp-scope/ping` 返回 200。
+ * —— 实测 `GET /` 返回 401，而 `GET /plugins/dsh-vasp-panel/ping` 返回 200。
  * 本插件的路由能读集群文件、且持有 SSH key，所以这层必须自己补。
  *
  * 两道关：
@@ -817,21 +817,21 @@ export function apply(ctx, config) {
           kind: 'exact',
           path: `${ROUTE}/${sub}`,
           handler: (req, res) => fn(req, res),
-        }), `dsh-vasp-scope: ${sub} route`);
+        }), `dsh-vasp-panel: ${sub} route`);
         ok.push(sub);
       } catch (e) {
         bad.push(`${sub}: ${(e && e.message) || String(e)}`);
       }
     }
     h._reg = { ok, bad };
-    if (bad.length && ctx.logger) ctx.logger.warn(`dsh-vasp-scope: ${bad.length} 条路由注册失败 → ${bad.join(' | ')}`);
+    if (bad.length && ctx.logger) ctx.logger.warn(`dsh-vasp-panel: ${bad.length} 条路由注册失败 → ${bad.join(' | ')}`);
   };
 
   registerWebSurface();
   ctx.on('internal/service', serviceName => {
     if (WEB_SERVER_KEYS.includes(serviceName)) registerWebSurface();
   });
-  ctx.logger.info('dsh-vasp-scope: host half active (ssh bridge)');
+  ctx.logger.info('dsh-vasp-panel: host half active (ssh bridge)');
 }
 
 import { plotScript, parsePlotOutput } from './plot-script.js';

@@ -1,6 +1,6 @@
 {
-  "name": "dsh-vasp-scope",
-  "version": "0.7.0",
+  "name": "dsh-vasp-panel",
+  "version": "0.7.1",
   "description": "VASP task panel for DeepSeek Harness, both halves: the host half reads a REMOTE cluster over SSH (ionic-step AND electronic-step SCF convergence, structures/files/INCAR, per-task elements/counts, the INCAR subset the panel classifies calculation types with, and OUTCAR-tail markers for the five task states) and addresses files by an explicit path (so it also works under a `--x` traverse-only ACL such as /home/shared); the client half adds a persistent sidebar entry that opens the panel file into DSH's sidebar.",
   "type": "module",
   "main": "lib/host-v7.js",

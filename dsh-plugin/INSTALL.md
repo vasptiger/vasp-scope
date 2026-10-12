@@ -9,7 +9,7 @@ DSH 的插件分**两半**：宿主半边（`lib/host-v7.js`，跑在主进程�
 ```bash
 # A) 开发模式：直接放进 profile 的插件目录（路径以你的 DSH 为准）
 #    %USERPROFILE%\.dsh\profiles\<profile>\  （Linux/macOS 为 ~/.dsh/profiles/<profile>/）
-#    目录名即插件 id：dsh-vasp-scope
+#    目录名即插件 id：dsh-vasp-panel
 
 # B) 本地 npm 安装（在 DSH 的 profile 目录里执行）
 npm install <本仓库路径>/dsh-plugin

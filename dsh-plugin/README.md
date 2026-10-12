@@ -1,4 +1,4 @@
-# dsh-vasp-scope
+# dsh-vasp-panel
 
 VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程集群**上的 VASP 任务目录；
 浏览器半边在 **DSH 侧栏底部（"设置"旁边）挂一个常驻入口**，点一下就把面板文件
@@ -15,19 +15,19 @@ VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程�
 | 依赖 | `dsh-better-sidebar`（提供 `ctx.betterSidebar`）。缺了它入口会安静降级（console.warn），**不会报错、不会拖挂页面** |
 | 容错 | `apply()` 与 factory 整体 try/catch；`slots`/`betterSidebar` 都用可选访问，任何异常都不冒泡到外壳 |
 
-> 这套客户端半边先在**隔离探针** `dsh-vasp-scope-probe` 上验证过（宿主/客户端两半加载、
+> 这套客户端半边先在**隔离探针** `dsh-vasp-panel-probe` 上验证过（宿主/客户端两半加载、
 > 槽位占用 `active:true`、入口渲染、点击开进侧栏、页面不挂），确认无误后才合并到这里。
 
 ## 与 dsh-vaspflow 的关键差别
 
-| | dsh-vaspflow | dsh-vasp-scope |
+| | dsh-vaspflow | dsh-vasp-panel |
 |---|---|---|
 | 数据来源 | **本地** `node:fs` 扫本地目录 | **远程 SSH**，按给定路径读 |
 | 目录枚举 | 依赖 `readdir` | 枚举可选；**给精确路径就能读** |
 | 适用 ACL | 需可读目录 | 也适用于 `--x`（可进入、不可枚举），如 `/home/shared` |
 | 前端 | React + antd + three（需打包） | **单文件 HTML 走 iframe**，无需打包 |
 
-## 路由（前缀 `/plugins/dsh-vasp-scope/*`）
+## 路由（前缀 `/plugins/dsh-vasp-panel/*`）
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -88,7 +88,7 @@ VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程�
 ```yaml
 - insert:
     - id: vasp-panel
-      name: dsh-vasp-scope
+      name: dsh-vasp-panel
       config:
         sshHost: mycluster                      # ~/.ssh/config 里的别名，或 user@host
         roots: ['/home/user/projects/demo']        # 路径白名单（安全边界）
@@ -102,7 +102,7 @@ VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程�
 dsh plugin --profile desktop add <本目录>
 ```
 
-或手工：在 profile 的 `package.json` 里加依赖 + 把 `dsh-vasp-scope` 加进
+或手工：在 profile 的 `package.json` 里加依赖 + 把 `dsh-vasp-panel` 加进
 `dsh.profile.bundles`，然后 `pnpm install`。
 
 > ⚠️ 本机 `C:` 只剩 ~70 MB，pnpm 安装会 `ENOSPC`。装之前需要先腾空间。

@@ -1,5 +1,5 @@
 /**
- * dsh-vasp-scope · 浏览器半边（lib/client.js）单测 —— DOM / 服务桩，不需要浏览器。
+ * dsh-vasp-panel · 浏览器半边（lib/client.js）单测 —— DOM / 服务桩，不需要浏览器。
  *
  * 桩的规矩：**同一个 id 必须返回同一个对象**（这个坑犯过三次）。
  * 运行：node --test test/client.test.mjs
@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const CLIENT = new URL('../lib/client.js', import.meta.url);
-const PANEL = 'D:\\dsh\\vasp-panel.html';
+/* PANEL_PATH 从被检源码里读出来 ✓ —— 不写死作者机器路径 ✗
+   （这个修复当初只落在发布树 ✗，被工作区旧版同步覆盖回来了 ✗） */
+const PANEL = (readFileSync(CLIENT, 'utf8').match(/PANEL_PATH\s*=\s*'([^']+)'/) || [, ''])[1].replace(/\\\\/g, '\\');
 
 /* ------------------------------------------------------------------ 桩 */
 const ReactStub = {
@@ -69,10 +71,10 @@ function mountWith(services) {
 
 /* ------------------------------------------------------------------ 契约 */
 test('模块契约：id = 包名，导出 apply / inject / name', () => {
-  assert.equal(capturedLoad.id, 'dsh-vasp-scope');
+  assert.equal(capturedLoad.id, 'dsh-vasp-panel');
   assert.equal(typeof mod.apply, 'function');
   assert.deepEqual([...mod.inject], ['slots']);   // inject 写的是 cordis 服务名
-  assert.equal(mod.name, 'dsh-vasp-scope-client');
+  assert.equal(mod.name, 'dsh-vasp-panel-client');
 });
 
 test('源码自检：两条外壳硬规矩（__ModuleLoader__ 包装 + 整体 try/catch）', () => {

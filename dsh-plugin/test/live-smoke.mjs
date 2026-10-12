@@ -25,14 +25,14 @@ let fail = 0;
 const ok = (c, m) => { if (!c) { fail++; console.log('  ✗ ' + m); } else { console.log('  ✓ ' + m); } };
 
 console.log('=== 1. ping ===');
-const r1 = res(); await h.ping(req('/plugins/dsh-vasp-scope/ping'), r1);
+const r1 = res(); await h.ping(req('/plugins/dsh-vasp-panel/ping'), r1);
 console.log('  ' + r1.body);
 ok(J(r1).sshHost === 'mycluster', 'ping 返回 sshHost');
 
 console.log('\n=== 2. scan /home/user/projects/demo（真 ssh）===');
 const t0 = Date.now();
 const r2 = res();
-await h.scan(req('/plugins/dsh-vasp-scope/scan?root=' + enc('/home/user/projects/demo')), r2);
+await h.scan(req('/plugins/dsh-vasp-panel/scan?root=' + enc('/home/user/projects/demo')), r2);
 const ms = Date.now() - t0;
 if (r2.code !== 200) { console.log('  ✗ HTTP ' + r2.code + '  ' + r2.body.slice(0, 300)); fail++; }
 else {
@@ -52,7 +52,7 @@ else {
 
 console.log('\n=== 3. list（真 ssh）===');
 const r3 = res();
-await h.list(req('/plugins/dsh-vasp-scope/list?dir=' + enc('/home/user/projects/demo/proj2/mg1')), r3);
+await h.list(req('/plugins/dsh-vasp-panel/list?dir=' + enc('/home/user/projects/demo/proj2/mg1')), r3);
 if (r3.code !== 200) { console.log('  ✗ ' + r3.body.slice(0, 200)); fail++; }
 else {
   const b = J(r3);
@@ -63,7 +63,7 @@ else {
 
 console.log('\n=== 4. read（真 ssh，分块）===');
 const r4 = res();
-await h.read(req('/plugins/dsh-vasp-scope/read?file=' + enc('/home/user/projects/demo/proj2/mg1/INCAR') + '&offset=0&limit=200'), r4);
+await h.read(req('/plugins/dsh-vasp-panel/read?file=' + enc('/home/user/projects/demo/proj2/mg1/INCAR') + '&offset=0&limit=200'), r4);
 if (r4.code !== 200) { console.log('  ✗ ' + r4.body.slice(0, 200)); fail++; }
 else {
   const b = J(r4);
@@ -75,7 +75,7 @@ else {
 }
 
 console.log('\n=== 5. convergence（真 ssh）===');
-const r5 = res();await h.convergence(req('/plugins/dsh-vasp-scope/convergence?dir=' + enc('/home/user/projects/demo/demo/mg/nf')), r5);
+const r5 = res();await h.convergence(req('/plugins/dsh-vasp-panel/convergence?dir=' + enc('/home/user/projects/demo/demo/mg/nf')), r5);
 if (r5.code !== 200) { console.log('  ✗ ' + r5.body.slice(0, 200)); fail++; }
 else {
   const b = J(r5);
@@ -90,7 +90,7 @@ console.log('\n=== 6. task：单任务全量（真 ssh，一次往返）===');
 {
   const t0 = Date.now();
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-scope/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
   const ms = Date.now() - t0;
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
@@ -115,7 +115,7 @@ console.log('\n=== 6. task：单任务全量（真 ssh，一次往返）===');
 
 console.log('\n=== 7. 路径白名单（真 ssh 不该被调用）===');
 const r6 = res();
-await h.scan(req('/plugins/dsh-vasp-scope/scan?root=' + enc('/home/shared')), r6);
+await h.scan(req('/plugins/dsh-vasp-panel/scan?root=' + enc('/home/shared')), r6);
 console.log(`  /home/shared → HTTP ${r6.code}  ${r6.body.slice(0, 120)}`);
 ok(r6.code === 400, '白名单外的 root 应被拒（这也说明它不会被误用来扫 shared）');
 
@@ -125,7 +125,7 @@ ok(r6.code === 400, '白名单外的 root 应被拒（这也说明它不会被�
 console.log('\n=== 8. 电子步 SCF：静态单点任务（真 ssh，demo/sys1/nf/nf）===');
 {
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-scope/task?dir=' + enc('/home/user/projects/demo/demo/sys1/nf/nf') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/demo/sys1/nf/nf') + '&ttl=0'), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
     const b = J(r);
@@ -146,7 +146,7 @@ console.log('\n=== 8. 电子步 SCF：静态单点任务（真 ssh，demo/sys1/n
 console.log('\n=== 9. 电子步 × 多离子步（真 ssh，proj2/mg3）===');
 {
   const r = res();
-  await h.task(req('/plugins/dsh-vasp-scope/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
+  await h.task(req('/plugins/dsh-vasp-panel/task?dir=' + enc('/home/user/projects/demo/proj2/mg3') + '&ttl=0'), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 300)); fail++; }
   else {
     const b = J(r);
@@ -161,7 +161,7 @@ console.log('\n=== 9. 电子步 × 多离子步（真 ssh，proj2/mg3）===');
 console.log('\n=== 10. scan 顺带字段：元素/计数 + INCAR 子集 + 产物文件（真 ssh）===');
 {
   const r = res();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan?root=' + enc('/home/user/projects/demo')), r);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan?root=' + enc('/home/user/projects/demo')), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 200)); fail++; }
   else {
     const b = J(r);
@@ -202,7 +202,7 @@ console.log('\n=== 10. scan 顺带字段：元素/计数 + INCAR 子集 + 产物
 console.log('\n=== 11. 任务状态标记（真 ssh）：只看 OUTCAR 尾部 ===');
 {
   const r = res();
-  await h.scan(req('/plugins/dsh-vasp-scope/scan?root=' + enc('/home/user/projects/demo')), r);
+  await h.scan(req('/plugins/dsh-vasp-panel/scan?root=' + enc('/home/user/projects/demo')), r);
   if (r.code !== 200) { console.log('  ✗ ' + r.body.slice(0, 200)); fail++; }
   else {
     const b = J(r);
