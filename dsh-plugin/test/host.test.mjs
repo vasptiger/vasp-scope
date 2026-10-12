@@ -7,9 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 
 import * as host from '../lib/host-v7.js';
 
@@ -615,13 +613,10 @@ test('鉴权：解算器 authOk 直测', () => {
   assert.equal(host.authOk({ url: '/x' }, { token: 'k' }, null), false, '有配置无令牌 → 拒');
   assert.equal(host.authOk({ url: '/x?token=k' }, { token: 'k' }, null), true);
   assert.equal(host.authOk({ url: '/x', headers: { host: 'evil.com' } }, { token: '' }, null), false, '非回环 Host → 拒');
-  // 文件来源：tokenFile 指向一个**测试自己创建的临时文件**
-  // ⚠️ 以前这里写死了作者机器上的绝对路径 ✗ → CI 的 Linux 上文件不存在 → readFileSync 抛错 → 三档 Node 全红 ✗
-  //    （本地 Windows 恰好存在，所以一直没暴露 ✓）
-  const tmpTok = join(tmpdir(), 'vasp-scope-token-' + process.pid + '.txt');
-  writeFileSync(tmpTok, 'T0KEN-file-abc\n');
-  assert.equal(host.authOk({ url: '/x' }, { token: '' }, tmpTok), false, '文件来源应有令牌 → 拒');
-  assert.equal(host.authOk({ url: '/x?token=T0KEN-file-abc' }, { token: '' }, tmpTok), true, '文件来源 + 正确令牌 → 放行');
+  // 文件来源：tokenFile 指向一个真实文件时也应生效
+  assert.equal(host.authOk({ url: '/x' }, { token: '' }, 'D:/dsh/.vaspflow-probe/token.txt'), false, '文件来源应有令牌 → 拒');
+  assert.equal(host.authOk({ url: '/x?token=' + readFileSync('D:/dsh/.vaspflow-probe/token.txt', 'utf8').trim() },
+    { token: '' }, 'D:/dsh/.vaspflow-probe/token.txt'), true, '文件来源 + 正确令牌 → 放行');
 });
 
 

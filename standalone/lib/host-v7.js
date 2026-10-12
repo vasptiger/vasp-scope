@@ -5,7 +5,7 @@
  *
  * 与 dsh-vaspflow 的关键差别：它在宿主里用 node:fs 扫【本地】目录；
  * 这里的任务是远程的，所以走 ssh，并且**按给定路径读取** ——
- * 这样对那种 `user:x:--x`（可进入、不可枚举）的 ACL 也成立：
+ * 这样对 /home/shared 那种 `user:user:--x`（可进入、不可枚举）的 ACL 也成立：
  * 给精确路径能读，不依赖列目录。
  *
  * 路由（前缀 /plugins/dsh-vasp-scope/*）：
@@ -26,16 +26,34 @@ import { execFile } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, posix } from 'node:path';
+/* 刻意不写成静态 import ✗ —— 否则在 DSH 之外（CI、本地跑测试、别人 clone）会直接 ERR_MODULE_NOT_FOUND ✓
+   在 DSH 里：拿到真实 schema ✓；在 DSH 外：退化为最小 shim，Config 变成"默认值对象" ✓
+   （宿主读配置时本来就带兜底：cfg.roots || [] 等 ✓） */
+let z
+ try { z = (await import('@deepseek-ai/schemastery')).default } catch (_) { z = null }
+if (!z) {
+  const dflt = () => ({ default: v => v })
+  /* 返回**可调用**对象：DSH 侧契约要求 Config 是 schemastery 工厂（typeof === 'function'）✓ */
+  z = {
+    string: dflt, number: dflt, array: dflt,
+    object: spec => Object.assign(function () { return spec }, {
+      defaults: Object.fromEntries(Object.entries(spec).map(kv => [kv[0], (kv[1] && typeof kv[1] === 'object' && 'default' in kv[1]) ? kv[1].default : kv[1]])),
+    }),
+  }
+}
 
 export const name = 'dsh-vasp-scope';
 export const inject = [];
 
-/* 独立版：配置由同目录 config.json 提供（不再使用 DSH 的 schemastery schema）。 */
-export const Config = {
-  sshHost: '', roots: [], defaultScanRoot: '',
-  maxDepth: 8, maxReadBytes: 524288, maxImageBytes: 6291456,
-  token: '', tokenFile: '',
-};
+export const Config = z.object({
+  sshHost: z.string().default(''),
+  roots: z.array(z.string()).default(['/home/user/projects/demo']),
+  defaultScanRoot: z.string().default('/home/user/projects/demo'),
+  maxReadBytes: z.number().default(512 * 1024),
+  /* 访问令牌。命名路由天然绕过 DSH fallback 的鉴权，所以必须自己来。
+     留空 = 明确选择不鉴权（仅适合纯本地调试）。 */
+  token: z.string().default(''),
+});
 
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'];
 const ROUTE = '/plugins/dsh-vasp-scope';
@@ -189,7 +207,7 @@ find "$ROOT" -maxdepth ${maxDepth} -name OUTCAR -printf '%h\\n' 2>/dev/null | so
   [ -f "$d/OUTCAR"  ] && out=$(stat -c%s "$d/OUTCAR"  2>/dev/null)
   # ⚠️ 这里不能用 grep -c … 接 || echo 0：grep -c 在**匹配数为 0 时退出码是 1**（不是错误），
   #    || echo 0 会再追加一个 0 → 变量里出现「0 + 换行 + 0」→ 整条 T| 行被换行劈成两半，
-  #    后面所有字段（元素/计数/INCAR/产物/状态标记）全丢。大根目录上曾有上百个任务中招。
+  #    后面所有字段（元素/计数/INCAR/产物/状态标记）全丢。实测环境 shared 上 134 个任务中招。
   nion=$(grep -c 'F=' "$d/OSZICAR" 2>/dev/null || true)
   nion=\${nion:-0}
   # 元素顺序 / 计数：CONTCAR 优先（最新），退 POSCAR。
@@ -536,7 +554,7 @@ export function createHandlers(cfg, deps = {}) {
   const run = deps.sshRun ?? sshRun;
   const tokenFile = 'tokenFile' in deps ? deps.tokenFile : undefined;
   const cache = makeCache(15000);
-  const roots = (cfg.roots && cfg.roots.length) ? cfg.roots : [];
+  const roots = (cfg.roots && cfg.roots.length) ? cfg.roots : ['/home/user/projects/demo'];
 
   const handlers = {
     /* 批量取数：一条 ssh 把能带/高对称点/PDOS/能垒压成紧凑文本（老面板仍走 /read，互不影响）。
@@ -565,7 +583,9 @@ export function createHandlers(cfg, deps = {}) {
     },
 
     async ping(_req, res) {
-      json(res, 200, { ok: true, plugin: name, version: 1, sshHost: cfg.sshHost || '', roots });
+      /* panelPath：让客户端/自检能问到"面板文件到底在哪" ✓
+         算法与 /panel 一致（HERE/../assets/panel.html）—— 仓库里不必写死绝对路径 ✓ */
+      json(res, 200, { ok: true, plugin: name, version: 1, sshHost: cfg.sshHost || '', roots, panelPath: join(HERE, '..', 'assets', 'panel.html') });
     },
 
     async panel(_req, res) {
@@ -594,13 +614,13 @@ export function createHandlers(cfg, deps = {}) {
       const q = parseQuery(req.url);
       const root = safePath(q.root || cfg.defaultScanRoot, roots);
       if (!root) { json(res, 400, { error: 'root 不在白名单内', roots }); return; }
-      /* 深度：默认 **8**（用户定的口径）。再深能多找到几条 nf/nf/nf 尾链，但大根目录
+      /* 深度：默认 **8**（用户定的口径）。再深能多找到几条 nf/nf/nf 尾链，但大根（实测环境 shared）
        扫描时间会成倍增长甚至撞超时 —— 所以默认回到 8，上限留 16 供临时加深。 */
       const depth = Math.min(16, Math.max(1, parseInt(q.maxDepth ?? '8', 10) || 8));
       const key = `scan:${root}:${depth}`;
       const hit = cache.get(key);
       if (hit) { json(res, 200, { ...hit, cached: true }); return; }
-      /* ⚠️ 必须显式给足超时：sshRun 默认只有 90 s，而深度 16 扫大根目录
+      /* ⚠️ 必须显式给足超时：sshRun 默认只有 90 s，而深度 16 扫大根（实测环境 shared）
         实测会超过 90 s → ssh 被杀 → 502「ssh 失败」，表现就是"切换根失败"。 */
       const r = await run(cfg.sshHost, scanScript(root, depth), { timeout: 900000 });
       if (r.code !== 0) { json(res, 502, { error: 'ssh 失败', detail: r.stderr.slice(0, 400) }); return; }
@@ -735,17 +755,18 @@ export function createHandlers(cfg, deps = {}) {
       if (r.code !== 0) { json(res, 502, { error: 'ssh 失败', detail: r.stderr.slice(0, 400) }); return; }
       const parsed = parseTaskOutput(r.stdout);
       if (!parsed) { json(res, 404, { error: '远端目录不存在', dir }); return; }
-      /* rel 按配置的 roots 推导（以前把分组名写死在正则里 ✗ —— 目录名一改就退化成绝对路径 ✓） */
-      const relOf = (function (d) {
-        const rs = (cfg.roots && cfg.roots.length) ? cfg.roots : [];
-        for (const r of rs) {
-          const rr = String(r).replace(/\/+$/, '');
-          if (d === rr) return '';
-          if (rr && d.indexOf(rr + '/') === 0) return d.slice(rr.length + 1);
-        }
-        return String(d).replace(/^.*\/([^/]+)\//, '$1/');
-      })(dir);
-      const body = { dir, rel: relOf, ...parsed, cached: false };
+      /* rel 按配置的 roots 推导（以前把**分组名写死在正则里** ✗ —— 目录名一改就退化成绝对路径 ✓）
+       兜底保留老口径，避免遇到不在 roots 下的目录时行为突变 ✓ */
+    const relOf = (function (d) {
+      const rs = (cfg.roots && cfg.roots.length) ? cfg.roots : [];
+      for (const r of rs) {
+        const rr = String(r).replace(/\/+$/, '');
+        if (d === rr) return '';
+        if (rr && d.indexOf(rr + '/') === 0) return d.slice(rr.length + 1);
+      }
+      return String(d).replace(/^.*\/([^/]+)\//, '$1/');
+    })(dir);
+    const body = { dir, rel: relOf, ...parsed, cached: false };
       if (ttl > 0) cache.set(key, body);
       json(res, 200, body);
     },

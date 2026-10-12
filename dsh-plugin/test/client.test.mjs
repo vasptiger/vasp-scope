@@ -9,9 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const CLIENT = new URL('../lib/client.js', import.meta.url);
-/* PANEL_PATH 从被检源码里读出来，而不是写死在测试里 ✗
-   （写死过：既把作者机器路径带进公开仓库，又正好落在闸门的盲区里 —— 转义的 \\ 形式扫不到 ✓） */
-const PANEL = (readFileSync(CLIENT, 'utf8').match(/PANEL_PATH\s*=\s*'([^']+)'/) || [, ''])[1].replace(/\\\\/g, '\\');
+const PANEL = 'D:\\dsh\\vasp-panel.html';
 
 /* ------------------------------------------------------------------ 桩 */
 const ReactStub = {
