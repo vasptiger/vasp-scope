@@ -39,7 +39,7 @@ token: ''                          # 留空=不鉴权（面板只在本机侧栏
 `lib/client.js` 顶部：
 
 ```js
-var PANEL_PATH = 'D:\\vasp-panel\\panel.html';   // ← 改成你放 panel.html 的绝对路径
+var PANEL_PATH = '<你放 panel.html 的绝对路径>';   // ← 改成你放 panel.html 的绝对路径
 ```
 
 - 必须是**绝对路径**（DSH 会把相对路径拼到会话 cwd 上 ✗）
