@@ -10,7 +10,7 @@ VASP 任务面板的 **DSH 插件**形态。宿主半边通过 **SSH 读远程�
 |---|---|
 | 挂载点 | 外壳自带的槽位 `sidebar.footer.action`（"Optional actions beside Settings at the sidebar foot"，`replaceRisk: none`），用 `ctx.slots.inject(...)` 等声明、再 `ctx.slots.register(...)` |
 | 折叠态 | 外壳把唯一 owner prop `wide` 传进来：`wide=true` 显示"图标 + VASP 面板"，`false`（56px 轨道）只显示图标 |
-| 点击动作 | `ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\dsh\\vasp-panel.html')` → 面板作为侧栏标签页打开（同路径自动去重，不会开成两个） |
+| 点击动作 | `ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\vasp-panel\\panel.html')` → 面板作为侧栏标签页打开（同路径自动去重，不会开成两个） |
 | 为什么不是打开 URL | 侧栏浏览器硬编码拦掉一切本机地址，所以入口只把**本地面板文件**开进侧栏；面板在**不透明源沙箱 iframe**里渲染，靠下面这套 CORS 头跨域取数 |
 | 依赖 | `dsh-better-sidebar`（提供 `ctx.betterSidebar`）。缺了它入口会安静降级（console.warn），**不会报错、不会拖挂页面** |
 | 容错 | `apply()` 与 factory 整体 try/catch；`slots`/`betterSidebar` 都用可选访问，任何异常都不冒泡到外壳 |

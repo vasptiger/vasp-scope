@@ -12,7 +12,7 @@
  * 不用猜 class 名、不用自愈重试，折叠态（wide=false）由外壳交给我们处理，失败面更小。
  *
  * 点击动作 = 把本地面板文件开成侧栏里的一个标签页：
- *   ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\dsh\\vasp-panel.html')
+ *   ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\vasp-panel\\panel.html')
  * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-scope/panel：
  *   侧栏浏览器（better-sidebar 的网页 tab）硬编码拦掉一切本机地址，
  *   所以入口只负责「把本地面板文件开进侧栏」，面板自身用 file:// / 沙箱 iframe 渲染，
@@ -26,7 +26,7 @@
  */
 (function () {
   var ID = 'dsh-vasp-scope';
-  var PANEL_PATH = 'D:\\dsh\\vasp-panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
+  var PANEL_PATH = 'D:\\vasp-panel\\panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
   var ENTRY_ATTR = 'data-dsh-vasppanel-entry';
 
   try {
