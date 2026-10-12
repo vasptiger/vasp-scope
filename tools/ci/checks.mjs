@@ -27,7 +27,8 @@ const J = (...p) => p.join('')          // 拼接，避免本文件出现禁用�
 const FORBIDDEN = [
   J('h', 'cx'), J('lee', 'hpc'), J('len', 'ovo'), J('roc', 'ky'),     // 个人主机/账号
   '101.7.129.73',                                                      // 集群 IP
-  J('D:', '\\', 'dsh'), J('/home/', 'hcx'), J('/home/', 'leehpc'),     // 个人路径
+  J('D:', '\\', 'dsh'), J('D:', '\\\\', 'dsh'),                        // 个人路径（含**转义形式** D:\\\\dsh ✓ 以前扫不到 ✗）
+  J('/home/', 'hcx'), J('/home/', 'leehpc'),
   J('vasp', 'scope'),                                                  // 旧项目名（新名 vasp-scope 不算 ✗）
   J('nd', '/li'), J('nd', '/mno'), J('cij', '/'), J('VC', '/'), J('Bi', 'OX'),  // 内部项目命名
   J('真', '机'),                                                        // 内部口气
