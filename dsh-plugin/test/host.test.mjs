@@ -78,7 +78,7 @@ test('scan：解析远端 T| 行，并带 TTL 缓存', async () => {
   const sshRun = async (hostName, script) => {
     calls++;
     assert.ok(script.includes("ROOT='/home/user/projects/demo'"), '脚本应带 root');
-    /* 深度：真机的 nf/nf/nf 链有十几层 → 默认 16、上限 32（用户要求「钻到最后一级」） */
+    /* 深度：实测环境的 nf/nf/nf 链有十几层 → 默认 16、上限 32（用户要求「钻到最后一级」） */
     assert.ok(script.includes('-maxdepth 8'), '默认深度 8');
     return { code: 0, stdout: 'T|demo/sys1|4525465|1930|1\nT|proj2/mg3|12916079|67659|70\n__END__\n', stderr: '' };
   };
@@ -146,7 +146,7 @@ test('scanScript：包含元素/计数/INCAR/产物/状态标记的抽取，且�
   assert.ok(s.includes('TITEL'), 'VASP4 格式应从 POTCAR 的 TITEL 补元素');
   assert.ok(/IBRION\|NSW\|ISIF/.test(s), '应 grep 判定计算类型要用的 INCAR 键');
   /* 去空白必须逐行（sed）：`tr -d '[:space:]'` 会把换行也删掉 → 键全粘成一行 →
-     面板只认得出第一个键 → 类型列大面积「—」（真机重现过一次，39 个里只对了 5 个）。
+     面板只认得出第一个键 → 类型列大面积「—」（实测环境重现过一次，39 个里只对了 5 个）。
      只检查**真正的命令行**（注释里也会提到这个坑，别被自己的注释绊倒）。 */
   const incLine = s.split('\n').find(l => l.includes('inc=$(')) || '';   // v60：回退定义与 inc 同行，不再要求行首
   assert.ok(incLine.includes("sed 's/[[:space:]]//g'"), 'inc 那一行应逐行 sed 去空白');
@@ -156,7 +156,7 @@ test('scanScript：包含元素/计数/INCAR/产物/状态标记的抽取，且�
   assert.ok(incLine.includes("tr '\\n' ','"), '键之间应以逗号分隔');
   /* nion 不能用 `grep -c … || echo 0`：grep -c 在匹配数为 0 时退出码是 1（不是错误），
      `|| echo 0` 会追加第二个 0 → 变量里混进换行 → 整条 T| 行被劈成两半、
-     后面 8 个字段全丢（真机 shared 上 134 个任务中过招）。 */
+     后面 8 个字段全丢（实测环境 shared 上 134 个任务中过招）。 */
   const nionLine = s.split('\n').find(l => l.trim().startsWith('nion=$(grep -c')) || '';
   assert.ok(nionLine.includes('|| true'), 'nion 那行应该用 || true 吞掉退出码');
   assert.ok(!nionLine.includes('|| echo 0'), 'nion 那行不能用 || echo 0（匹配数为 0 时会多打印一个 0）');
@@ -167,7 +167,7 @@ test('scanScript：包含元素/计数/INCAR/产物/状态标记的抽取，且�
   assert.ok(s.includes('General timing and accounting'), '缺「正常收尾行」判据');
   assert.ok(s.includes('reached required accuracy'), '缺「弛豫收敛达标」判据');
   assert.ok(s.includes('VERY BAD NEWS') && s.includes('ZBRENT: fatal error'), '缺致命错误关键字');
-  assert.ok(s.includes('I REFUSE TO CONTINUE'), '缺 VASP 的「我不干了」关键字（真机 proj2/mg2 就是这样死的）');
+  assert.ok(s.includes('I REFUSE TO CONTINUE'), '缺 VASP 的「我不干了」关键字（实测环境 proj2/mg2 就是这样死的）');
   assert.ok(s.includes('stat -c%Y'), '缺 OUTCAR mtime（判断还在不在写）');
   assert.equal((s.match(/^find /gm) || []).length, 1, '仍然只有一次 find（一次往返）');
   assert.equal((s.match(/tail -c 200000/g) || []).length, 1, '每个任务只 tail 一次 OUTCAR');
@@ -475,7 +475,7 @@ test('task 路由：注入假 ssh，校验返回结构', async () => {
   assert.equal(b.nScf, 3, '/task 必须带上电子步');
   assert.deepEqual(b.scf[0], [1, 1, -370.16437, 12.5, 120, null]);
   /* 加了 @SCF 分节之后，力数据不许丢：ionic 行的后两列就是 maxF/rmsF。
-     （真机冒烟抓到过一次回归：FORCES 的 awk 被放到了 @SCF 后面 → 力全丢。） */
+     （实测环境冒烟抓到过一次回归：FORCES 的 awk 被放到了 @SCF 后面 → 力全丢。） */
   assert.equal(b.nForces, 2, '力数据不许因为新增分节而丢失');
   assert.deepEqual(b.ionic[0], [1, -370.16437, 2.372811, 1.4532]);
   assert.deepEqual(b.ionic[1], [2, -370.89224, 1.643887, 0.901]);
@@ -509,7 +509,7 @@ test('CORS：响应必须带 access-control-allow-origin（面板从 file:// 取
 // ---------------------------------------------------------------- 回归：末尾无换行符
 
 test('回归：标记黏在上一行末尾也要能切分（INCAR 末尾没有换行符）', () => {
-  // 真机实测到的样子：INCAR 最后一行紧跟 @FILE CONTCAR，中间没有换行符
+  // 实测环境实测到的样子：INCAR 最后一行紧跟 @FILE CONTCAR，中间没有换行符
   const glued = [
     '@FILES', 'CONTCAR|5924|1.0', '@FILE INCAR', 'SYSTEM = surface',
     'ISIF = 3   # 末行没有换行符，标记会黏上来@FILE CONTCAR',

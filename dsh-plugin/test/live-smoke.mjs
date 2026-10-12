@@ -1,5 +1,5 @@
 /**
- * 真机冒烟：用插件自己的 sshRun + 脚本生成器打一次集群，
+ * 实测环境冒烟：用插件自己的 sshRun + 脚本生成器打一次集群，
  * 验证「远端 → 解析 → JSON」整条链路（不安装插件也能验）。
  * 用法：ELECTRON_RUN_AS_NODE=1 "<exe>" live-smoke.mjs
  *
@@ -176,7 +176,7 @@ console.log('\n=== 10. scan 顺带字段：元素/计数 + INCAR 子集 + 产物
     }
     ok(withEls >= n * 0.95, `元素/计数覆盖率应 ≥95%（实得 ${withEls}/${n}）`);
     ok(withInc >= n * 0.9, `INCAR 覆盖率应 ≥90%（实得 ${withInc}/${n}）`);
-    /* ⚠️ 这几条是真机抓到的回归的防线：宿主脚本曾用 `tr -d '[:space:]'` 去空白，
+    /* ⚠️ 这几条是实测环境抓到的回归的防线：宿主脚本曾用 `tr -d '[:space:]'` 去空白，
        它把换行也删了 → 所有键粘成一行（ICHARG=2LDAU=.TRUE.IVDW=11…）→
        面板只认得出第一个键 → 类型列大面积为「—」。**只做子串匹配抓不到**，
        必须验证「一键一值」的逗号分隔结构。 */
@@ -220,7 +220,7 @@ console.log('\n=== 11. 任务状态标记（真 ssh）：只看 OUTCAR 尾部 ==
     }
     ok(done >= n * 0.9, `大多任务应能认出正常收尾行（实得 ${done}/${n}）`);
     /* 命中错误关键字的任务：**很少**（关键字列表没写宽）；且它们都不该同时有正常收尾行。
-       真机第一次跑就揪出一个真失败的：proj2/mg2 —— ZBRENT 线搜索失败，
+       实测环境第一次跑就揪出一个真失败的：proj2/mg2 —— ZBRENT 线搜索失败，
        VASP 自己打了 `I REFUSE TO CONTINUE WITH THIS SICK JOB ... BYE!!!` 然后退出。 */
     const errList = b.tasks.filter(t => t.err).map(t => t.rel);
     console.log(`  命中错误关键字的任务：${errList.length ? errList.join(', ') : '（无）'}`);
@@ -268,10 +268,10 @@ console.log('\n=== 12. 原始 T| 行结构（防「变量里混进换行把整�
   console.log('  分布：' + JSON.stringify(tally));
   const badKp = kps.filter(v => !['', 'grid', 'line', 'other'].includes(v));
   ok(badKp.length === 0, `类型字段只能是 grid/line/other/空（异常 ${badKp.length} 个）`);
-  /* 有 KPOINTS 的任务里，grid 与非 grid 都要能认出来（真机两者都有才算验到） */
+  /* 有 KPOINTS 的任务里，grid 与非 grid 都要能认出来（实测环境两者都有才算验到） */
   const hasGrid = kps.filter(v => v === 'grid').length, hasNon = kps.filter(v => v === 'line' || v === 'other').length;
   ok(hasGrid + hasNon > 0, `至少要认出一些 KPOINTS（grid=${hasGrid}，非网格=${hasNon}）`);
 }
 
-console.log('\n' + (fail === 0 ? '✅ 真机冒烟全部通过' : `❌ ${fail} 处失败`));
+console.log('\n' + (fail === 0 ? '✅ 实测环境冒烟全部通过' : `❌ ${fail} 处失败`));
 process.exitCode = fail ? 1 : 0;

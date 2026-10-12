@@ -210,7 +210,7 @@ find "$ROOT" -maxdepth ${maxDepth} -name OUTCAR -printf '%h\\n' 2>/dev/null | so
   [ -n "$els" ] || els=$(trim "$(grep -m 20 'TITEL' "$d/POTCAR" 2>/dev/null | awk '{print $4}' | tr '\\n' ' ')")
   # 计算类型只用这一小撮 INCAR 键（面板 KIND_DEFS 的全部依据）。
   # ⚠️ 去空白必须用 **sed 逐行**做，不能用 tr -d '[:space:]' —— tr 把换行也删掉，
-  #    于是所有键粘成一行（真机实测 ICHARG=2LDAU=.TRUE.IVDW=11IBRION=2NSW=100ISIF=2），
+  #    于是所有键粘成一行（实测环境实测 ICHARG=2LDAU=.TRUE.IVDW=11IBRION=2NSW=100ISIF=2），
   #    面板的 parseINCAR 只认得出第一个键 → 绝大多数任务判不出类型、类型列显示「—」。
   I="$d/INCAR"; [ -f "$I" ] || I="$d/../INCAR"; K="$d/KPOINTS"; [ -f "$K" ] || K="$d/../KPOINTS"; inc=$(grep -iE '^[[:space:]]*(IBRION|NSW|ISIF|LORBIT|LELF|IMAGES|LCLIMB|ICHARG|LOPTICS|LDAU|IVDW|NFREE)[[:space:]]*=' "$I" 2>/dev/null | sed 's/[#!].*//' | sed 's/[[:space:]]//g' | tr '\\n' ',')
   fl=''
@@ -477,7 +477,7 @@ export function parseTaskOutput(stdout) {
     } else if (sec === 'scf') {
       /* 面板的 scf 行格式：[离子步, 电子步, E, dE, rms, rms(c)]（缺列用 null）。
          'F ' 行本来应该落在 @CONV 分节里（脚本顺序如此），这里也接一手：
-         分节边界一旦被挪动，力数据不该跟着丢（这个回归真机冒烟抓到过一次）。 */
+         分节边界一旦被挪动，力数据不该跟着丢（这个回归实测环境冒烟抓到过一次）。 */
       if (ln.startsWith('F ')) { const p = ln.split(' '); forces.push([parseFloat(p[1]), parseFloat(p[2])]); continue; }
       if (ln.startsWith('S ')) {
         const p = ln.split(' ');

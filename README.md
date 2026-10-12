@@ -1,4 +1,4 @@
-# vaspscope
+# vasp-scope
 
 **在浏览器里看你集群上的 VASP 计算结果。** 一个本地小服务 + 一个单文件网页面板，
 数据全靠 **系统 ssh 实时读远端文件** —— 不写远端、不上传、只监听 `127.0.0.1`。
@@ -11,7 +11,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#安装)
 [![DSH plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-6f42c1.svg)](dsh-plugin/INSTALL.md)
 
-> **English:** vaspscope is a local web dashboard for inspecting VASP calculation results over SSH —
+> **English:** vasp-scope is a local web dashboard for inspecting VASP calculation results over SSH —
 > band structure (with high-symmetry labels), PDOS, convergence, NEB barriers, 3D structures, files/images and AIMD (MSD/RDF).
 > Zero upload, read-only, loopback-only. Also ships as a [DeepSeek Harness](https://github.com/KevPH2026/deepseek-harness-desktop) sidebar plugin.
 
@@ -59,7 +59,7 @@ node server.js            # Windows 也可以直接双击 start.bat
 
 - **你要的是分析而不是查看**：算有效质量、投影能带积分、扩散系数的统计与拟合 —— 那是
   [py4vasp](https://github.com/materialsproject/py4vasp) / [pymatgen](https://github.com/materialsproject/pymatgen) / [sumo](https://github.com/SMTG-Bham/sumo) 的活。
-  vaspscope 只做"看得清、导得出"，不做二次计算。
+  vasp-scope 只做"看得清、导得出"，不做二次计算。
 - **数据就在本地磁盘**：直接看文件或用本地可视化工具更合适，为本地目录跑一层 ssh 是绕远路。
 - **需要多人协作 / 权限分级**：它没有账号体系，只有"本机 `127.0.0.1` + 可选 token"。
 
@@ -96,8 +96,8 @@ node server.js            # Windows 也可以直接双击 start.bat
 **独立版（Windows / macOS / Linux）**
 
 ```bash
-git clone https://github.com/<you>/vaspscope
-cd vaspscope/standalone
+git clone https://github.com/<you>/vasp-scope
+cd vasp-scope/standalone
 cp config.example.json config.json     # 填 sshHost 与 roots
 node server.js                          # Windows: 双击 start.bat
 ```
@@ -134,9 +134,8 @@ node server.js                          # Windows: 双击 start.bat
 ```bash
 node standalone/smoke-test.mjs               # 端到端连通性自检（面板 HTML + 5 条路由）
 node --test dsh-plugin/test/host.test.mjs    # 宿主半边单测（路由注册等）
-node dsh-plugin/test/live-smoke.mjs          # 打真机的冒烟（需先配好 sshHost / roots）
+node dsh-plugin/test/live-smoke.mjs          # 打实测环境的冒烟（需先配好 sshHost / roots）
 ```
-
 
 ## 常见问题
 
@@ -178,11 +177,11 @@ ssh you@your-cluster "echo ok"   # 不再问密码即成功
 
 ## 与其它工具的关系
 
-| 工具 | 它擅长什么 | 与 vaspscope 的关系 |
+| 工具 | 它擅长什么 | 与 vasp-scope 的关系 |
 |---|---|---|
 | [VASPKIT](https://vaspkit.com/) | 命令行后处理、生成绘图数据 | **互补**：能读它产生的 `PDOS_*` 等口径 |
 | [VESTA](https://jp-minerals.org/vesta/) | 晶体结构与电荷密度三维可视化 | **互补**：结构页配色与键长字典参考了 VESTA 的习惯 |
-| [py4vasp](https://github.com/materialsproject/py4vasp) / [sumo](https://github.com/SMTG-Bham/sumo) | Python 分析与出版级出图 | **分工**：统计/拟合/正式出图用它们；"打开就看、随手导出"用 vaspscope |
+| [py4vasp](https://github.com/materialsproject/py4vasp) / [sumo](https://github.com/SMTG-Bham/sumo) | Python 分析与出版级出图 | **分工**：统计/拟合/正式出图用它们；"打开就看、随手导出"用 vasp-scope |
 | [VTST tools](https://theory.cm.utexas.edu/vtsttools/) | NEB 能量与距离提取 | **口径一致**：能垒页的取数与 X 口径按其脚本语义实现 |
 | [DeepSeek Harness](https://github.com/KevPH2026/deepseek-harness-desktop) | 桌面 Agent 环境 | **宿主**：插件版把面板开进它的侧栏 |
 

@@ -1,6 +1,6 @@
 # DSH 插件版 · 使用教程
 
-> **一句话**：把 vaspscope 的面板开进 [DeepSeek Harness](https://github.com/KevPH2026/deepseek-harness-desktop) 的侧栏 ——
+> **一句话**：把 vasp-scope 的面板开进 [DeepSeek Harness](https://github.com/KevPH2026/deepseek-harness-desktop) 的侧栏 ——
 > 一边和 Agent 说话，一边在旁边看计算结果的图（能带 / PDOS / 收敛 / 能垒 / 结构 / AIMD）。
 >
 > 没装 DSH？用 [`../standalone/`](../standalone/) 那份独立版即可，功能完全一样。
@@ -108,7 +108,7 @@ DSH 侧栏底部（紧挨「设置」）        点一下 ↓
 ```bash
 node --test test/host.test.mjs     # 宿主半边：路由注册、/scan /task 解析、鉴权等（40 项）
 node --test test/client.test.mjs   # 浏览器半边：模块契约、槽位注册、页面不挂（9 项）
-node test/live-smoke.mjs           # 打真机的冒烟（需先配好 sshHost / roots）
+node test/live-smoke.mjs           # 打实测环境的冒烟（需先配好 sshHost / roots）
 ```
 两半都**刻意不依赖 DSH 内部包** ✓（`schemastery` 走动态 import + 最小 shim ✓），
 所以 **clone 下来就能跑测试** ✓，不必先装 DSH ✓。
@@ -119,7 +119,7 @@ lib/host-v7.js      宿主半边：11 条路由 + 远端脚本编排 + 解析（
 lib/plot-script.js  远端 shell + awk 批处理脚本与其输出解析（一次 ssh 取全部谱图 ✓）
 lib/client.js       浏览器半边：侧栏入口（slots 槽位 ✓）+ PANEL_PATH
 assets/panel.html   面板本体（单文件，无外部依赖 ✓）
-test/               宿主 / 客户端单测 + 真机冒烟
+test/               宿主 / 客户端单测 + 实测环境冒烟
 tools/              版本化小工具
 ```
 

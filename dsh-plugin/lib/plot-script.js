@@ -19,7 +19,7 @@ export function plotScript(dir, opts = {}) {
 
   S.push("D='" + d + "'");
   S.push('[ -d "$D" ] || { echo __NODIR__; exit 0; }');
-  /* 子目录探测：DOS 产物常在 dos/DOS/energy 下（真机 /home/user/.../nf/nf/nf/dos 就是这样） */
+  /* 子目录探测：DOS 产物常在 dos/DOS/energy 下（实测环境 /home/user/.../nf/nf/nf/dos 就是这样） */
   S.push('SUB="$D"; for s in dos DOS energy; do if [ -d "$D/$s" ] && ls "$D/$s"/*.dat >/dev/null 2>&1; then SUB="$D/$s"; break; fi; done; echo "@DIR $SUB"');
 
   /* 能带：空行分块（# 跳过）→ 大文件抽稀 → 块内按 k 升序 → 输出 k up dn 三列 */

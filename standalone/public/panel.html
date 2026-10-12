@@ -581,7 +581,7 @@ const KIND_DEFS = [
      if(isBandKp(kp)) a.push(`KPOINTS = ${kp==='line'?'line-mode':'显式 k 点列表'}（不是 x*x*x 网格 → 沿高对称路径）`)
      return '' }},
   /* 电荷密度：只看 INCAR 里**显式要了密度**（LCHARG=.TRUE.）。
-     原先「有 CHGCAR/CHG 就算」——但这两个是 VASP 默认产物：真机扫描 39/39 个任务
+     原先「有 CHGCAR/CHG 就算」——但这两个是 VASP 默认产物：实测环境扫描 39/39 个任务
      全都有，于是每个任务都会挂上「电荷密度」，反而不提供信息。
      （CHGCAR 的**读取**（ICHARG=11）归「能带」，别混在这条里。） */
   {id:'chg',   label:'电荷密度', test:(c,f)=> cbool(c.LCHARG),
@@ -1823,7 +1823,7 @@ const PLOT_CHUNK = 512 * 1024
 const PLOT_TOTAL_MAX = 12 << 20     // 合计最多 12 MB（一个任务的全部画图文件）
 
 /** 目录里有哪些"可画"的文件 */
-/** VASPKIT 产物常被放在任务的**子目录**里（真机实测：DOS / dos / energy / bader-dos-elf-charge-loc）；
+/** VASPKIT 产物常被放在任务的**子目录**里（实测环境实测：DOS / dos / energy / bader-dos-elf-charge-loc）；
  *  任务本目录里往往只有 DOSCAR —— 这就是「有些任务的 DOS 读不到」的主因。 */
 const PLOT_SUBDIRS = ['DOS', 'dos', 'energy', 'band', 'BAND', 'dos_band']
 function plotCandidates(t, sub, remoteNames){
@@ -1837,16 +1837,16 @@ function plotCandidates(t, sub, remoteNames){
     else if(base === 'KLINES.dat') out.klines = n
     else if(base === 'KLABELS') out.klabels = n
     /* VASPKIT 会同时写 PDOS_* 与 **IPDOS_***（积分/累计 PDOS）—— 两种都认，
-       否则真机上（如 demo/sys1、demo/sys2/nf）一个 PDOS 文件都匹配不到。 */
+       否则实测环境上（如 demo/sys1、demo/sys2/nf）一个 PDOS 文件都匹配不到。 */
     /* VASPKIT 的 DOS 产物名字有好几种：PDOS_<el>_UP/DW.dat、IPDOS_*（积分）、
-       不带自旋后缀的 PDOS_<el>.dat，以及**总 DOS** TDOS.dat / ITDOS.dat（真机实测都有）。 */
+       不带自旋后缀的 PDOS_<el>.dat，以及**总 DOS** TDOS.dat / ITDOS.dat（实测环境实测都有）。 */
     else if(pdosOwner(base) || /^I?TDOS\.dat$/i.test(base)) out.pdos.push(n)
     /* VASPKIT 的另一种能带输出（自旋分开两个文件）；BAND.dat 缺席时至少提示一下 */
     else if(/^REFORMATTED_BAND_(UP|DW)\.dat$/i.test(base)) out.rband.push(n)
     else if(/\.dat$/i.test(base) && !/^(BAND|KLINES|PBAND|IPDOS|PDOS|TDOS|ITDOS|REFORMATTED|fe\.dat$)/i.test(base) && !pdosOwner(base)) out.neb.push(n)
   }
   /* ⚠️ IPDOS_*（积分 DOS，单调）必须**先读**，PDOS_*（微分，有峰）后读 → 后者覆盖前者。
-     真机同一目录两套并存，不排序就会"谁后读谁赢"，画出积分曲线（看着像没自旋/没峰）。 */
+     实测环境同一目录两套并存，不排序就会"谁后读谁赢"，画出积分曲线（看着像没自旋/没峰）。 */
   out.pdos.sort((a, b) => (/^IPDOS/i.test(a) ? 0 : 1) - (/^IPDOS/i.test(b) ? 0 : 1))
   return out
 }
@@ -1959,7 +1959,7 @@ function parseBarrierDat(txt, eci){
     rows.push(c.slice())          // 保留全部列，能量列稍后再选
   }
   /* 合理性检查：NEB 的图像数不会上百；第 0 列（图像编号/距离差）必须非负、不过大。
-     真机上 fe.dat / DOSCAR 之类也有 4 列数字，不加这道闸就会画出一条假能垒。 */
+     实测环境上 fe.dat / DOSCAR 之类也有 4 列数字，不加这道闸就会画出一条假能垒。 */
   if(rows.length < 2 || rows.length > 100) return null
   if(rows.some(r => !(r[0] >= 0) || r[0] > 1000)) return null
   /* ⚠️ **绝不要按第 0 列排序**：SKILL.md §6 明确「行顺序就是图像顺序，不要重排」，
@@ -2007,10 +2007,10 @@ function nebX(d, how, rev){
   return { x, how }
 }
 /** NEB 根目录：**选中的是 image 目录（名字是数字）时，取它的上一级**。
- *  真机实证（shared）：`…/systemA/Br_TS-BiOBr/00|01|02` —— image 就摆在 TS 根下，
+ *  实测环境实证（shared）：`…/systemA/Br_TS-BiOBr/00|01|02` —— image 就摆在 TS 根下，
  *  选中 `…/00` 时若不回到上一级，就会去找 `00/00/POSCAR`（找不到，图自然空）。 */
 /** NEB 根的候选：**选中目录 → 上一级 → 上两级**，逐个试到能读出 image 为止。
- *  只认"目录名是数字就取上一级"是不够的 —— 真机上 image 可能摆在
+ *  只认"目录名是数字就取上一级"是不够的 —— 实测环境上 image 可能摆在
  *  `…/Br_TS-BiOBr/00`、`…/TS/00`、`…/TS/neb1/00`，选中的那一层未必就是根。 */
 function nebRootCandidates(t){
   const d = dirOf(t), out = [d]
@@ -2041,7 +2041,7 @@ async function nebImageFramesAt(base){
     for(const ln of L.slice(7, 7 + nat)){ const p = ln.trim().split(/\s+/).map(Number); if(p.length >= 3) fr.push(p.slice(0, 3)) }
     return fr.length === nat ? { fr, lat } : null
   }
-  /* 编号可能从 00 开始，也可能从 01 开始（两种流程真机都有）→ 两个起点都试 */
+  /* 编号可能从 00 开始，也可能从 01 开始（两种流程实测环境都有）→ 两个起点都试 */
   let frames = []
   for(const s0 of [0, 1]){
     frames = []
@@ -2532,7 +2532,7 @@ async function loadPlots(t){
         try{ applyPlot(o, B) }catch(_){ okBulk = false }
         o.bulk = okBulk
         if(okBulk){
-          /* 能垒**只有 .dat**的任务（真机 TS 目录的常态）也必须走批量：
+          /* 能垒**只有 .dat**的任务（实测环境 TS 目录的常态）也必须走批量：
              否则批量拿回来的 @NEB 被丢掉，又要逐文件 /read，能垒就一直慢。 */
           const got = !!(o.band && o.band.blocks && o.band.blocks.length) || Object.keys(o.pdos || {}).length > 0 || (B.neb || []).length > 0
           if(got){ o.loaded = true; o.plotBulk = true; return o }

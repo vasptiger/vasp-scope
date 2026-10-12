@@ -54,7 +54,7 @@ var PANEL_PATH = 'D:\\vasp-panel\\panel.html';   // ← 改成你放 panel.html 
 
 ```bash
 node --test test/host.test.mjs        # 宿主单测（路由注册等）
-node test/live-smoke.mjs              # 打真机的联通性冒烟（需先配好 sshHost/roots）
+node test/live-smoke.mjs              # 打实测环境的联通性冒烟（需先配好 sshHost/roots）
 ```
 
 面板侧还有一组离线探针（本仓库未附带），用来钉住 DOM 契约与关键口径 ✓。

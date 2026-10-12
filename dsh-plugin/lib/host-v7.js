@@ -208,7 +208,7 @@ find "$ROOT" -maxdepth ${maxDepth} -name OUTCAR -printf '%h\\n' 2>/dev/null | so
   [ -f "$d/OUTCAR"  ] && out=$(stat -c%s "$d/OUTCAR"  2>/dev/null)
   # ⚠️ 这里不能用 grep -c … 接 || echo 0：grep -c 在**匹配数为 0 时退出码是 1**（不是错误），
   #    || echo 0 会再追加一个 0 → 变量里出现「0 + 换行 + 0」→ 整条 T| 行被换行劈成两半，
-  #    后面所有字段（元素/计数/INCAR/产物/状态标记）全丢。真机 shared 上 134 个任务中招。
+  #    后面所有字段（元素/计数/INCAR/产物/状态标记）全丢。实测环境 shared 上 134 个任务中招。
   nion=$(grep -c 'F=' "$d/OSZICAR" 2>/dev/null || true)
   nion=\${nion:-0}
   # 元素顺序 / 计数：CONTCAR 优先（最新），退 POSCAR。
@@ -229,7 +229,7 @@ find "$ROOT" -maxdepth ${maxDepth} -name OUTCAR -printf '%h\\n' 2>/dev/null | so
   [ -n "$els" ] || els=$(trim "$(grep -m 20 'TITEL' "$d/POTCAR" 2>/dev/null | awk '{print $4}' | tr '\\n' ' ')")
   # 计算类型只用这一小撮 INCAR 键（面板 KIND_DEFS 的全部依据）。
   # ⚠️ 去空白必须用 **sed 逐行**做，不能用 tr -d '[:space:]' —— tr 把换行也删掉，
-  #    于是所有键粘成一行（真机实测 ICHARG=2LDAU=.TRUE.IVDW=11IBRION=2NSW=100ISIF=2），
+  #    于是所有键粘成一行（实测环境实测 ICHARG=2LDAU=.TRUE.IVDW=11IBRION=2NSW=100ISIF=2），
   #    面板的 parseINCAR 只认得出第一个键 → 绝大多数任务判不出类型、类型列显示「—」。
   I="$d/INCAR"; [ -f "$I" ] || I="$d/../INCAR"; K="$d/KPOINTS"; [ -f "$K" ] || K="$d/../KPOINTS"; inc=$(grep -iE '^[[:space:]]*(IBRION|NSW|ISIF|LORBIT|LELF|IMAGES|LCLIMB|ICHARG|LOPTICS|LDAU|IVDW|NFREE)[[:space:]]*=' "$I" 2>/dev/null | sed 's/[#!].*//' | sed 's/[[:space:]]//g' | tr '\\n' ',')
   fl=''
@@ -496,7 +496,7 @@ export function parseTaskOutput(stdout) {
     } else if (sec === 'scf') {
       /* 面板的 scf 行格式：[离子步, 电子步, E, dE, rms, rms(c)]（缺列用 null）。
          'F ' 行本来应该落在 @CONV 分节里（脚本顺序如此），这里也接一手：
-         分节边界一旦被挪动，力数据不该跟着丢（这个回归真机冒烟抓到过一次）。 */
+         分节边界一旦被挪动，力数据不该跟着丢（这个回归实测环境冒烟抓到过一次）。 */
       if (ln.startsWith('F ')) { const p = ln.split(' '); forces.push([parseFloat(p[1]), parseFloat(p[2])]); continue; }
       if (ln.startsWith('S ')) {
         const p = ln.split(' ');
@@ -613,13 +613,13 @@ export function createHandlers(cfg, deps = {}) {
       const q = parseQuery(req.url);
       const root = safePath(q.root || cfg.defaultScanRoot, roots);
       if (!root) { json(res, 400, { error: 'root 不在白名单内', roots }); return; }
-      /* 深度：默认 **8**（用户定的口径）。再深能多找到几条 nf/nf/nf 尾链，但大根（真机 shared）
+      /* 深度：默认 **8**（用户定的口径）。再深能多找到几条 nf/nf/nf 尾链，但大根（实测环境 shared）
        扫描时间会成倍增长甚至撞超时 —— 所以默认回到 8，上限留 16 供临时加深。 */
       const depth = Math.min(16, Math.max(1, parseInt(q.maxDepth ?? '8', 10) || 8));
       const key = `scan:${root}:${depth}`;
       const hit = cache.get(key);
       if (hit) { json(res, 200, { ...hit, cached: true }); return; }
-      /* ⚠️ 必须显式给足超时：sshRun 默认只有 90 s，而深度 16 扫大根（真机 shared）
+      /* ⚠️ 必须显式给足超时：sshRun 默认只有 90 s，而深度 16 扫大根（实测环境 shared）
         实测会超过 90 s → ssh 被杀 → 502「ssh 失败」，表现就是"切换根失败"。 */
       const r = await run(cfg.sshHost, scanScript(root, depth), { timeout: 900000 });
       if (r.code !== 0) { json(res, 502, { error: 'ssh 失败', detail: r.stderr.slice(0, 400) }); return; }
