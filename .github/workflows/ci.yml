@@ -6,6 +6,10 @@ on:
     branches: [main]
   pull_request:
 
+# 失败时要把日志推到 ci-log 分支 → 需要写权限 ✓
+permissions:
+  contents: write
+
 jobs:
   test:
     name: 测试 (Node ${{ matrix.node }})
@@ -25,6 +29,23 @@ jobs:
         run: node --test dsh-plugin/test/host.test.mjs
       - name: 单元测试 · 浏览器半边（模块契约 / 槽位 / 页面不挂）
         run: node --test dsh-plugin/test/client.test.mjs
+      # 失败时把自己这轮的输出推到 ci-log 分支 ✓（GitHub 的日志是懒加载的，外部读不到 ✗）
+      - name: 失败时把诊断输出推到 ci-log 分支（便于外部定位）
+        if: failure()
+        run: |
+          {
+            echo "== node $(node --version) =="
+            echo "== host.test.mjs =="; node --test dsh-plugin/test/host.test.mjs 2>&1 || true
+            echo "== client.test.mjs =="; node --test dsh-plugin/test/client.test.mjs 2>&1 || true
+            echo "== tools/ci/checks.mjs =="; node tools/ci/checks.mjs 2>&1 || true
+          } > ci.log 2>&1
+          git config user.name ci-bot
+          git config user.email ci-bot@users.noreply.github.com
+          mkdir -p .ci
+          cp ci.log ".ci/fail-node$(node -v | tr -d 'v').log"
+          git add -f .ci && git commit -m "ci: failure log [skip ci]" || true
+          git push -f origin HEAD:refs/heads/ci-log || true
+
       - name: 仓库自检（面板语法 / 独立版可加载 / 无本地配置 / 无个人数据）
         # 失败时抛 GitHub 注解 —— 日志是懒加载的（外部读不到 ✗），注解会出现在 Checks 页 HTML 里 ✓
         run: |
@@ -47,3 +68,18 @@ jobs:
           node-version: '20.x'
       - name: 与 pre-push 同一套闸门（禁止个人数据 / 凭据 / 本地配置）
         run: bash tools/pre-push
+
+      - name: 失败时把诊断输出推到 ci-log 分支（便于外部定位）
+        if: failure()
+        run: |
+          {
+            echo "== bash $(bash --version | head -1) =="; 
+            echo "== tools/pre-push =="; bash tools/pre-push 2>&1 || true
+            echo "== git ls-files 计数 =="; git ls-files | wc -l
+          } > ci.log 2>&1
+          git config user.name ci-bot
+          git config user.email ci-bot@users.noreply.github.com
+          mkdir -p .ci
+          cp ci.log ".ci/fail-hygiene.log"
+          git add -f .ci && git commit -m "ci: failure log [skip ci]" || true
+          git push -f origin HEAD:refs/heads/ci-log || true
