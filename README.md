@@ -180,7 +180,7 @@ ssh you@your-cluster "echo ok"   # 不再问密码即成功
 
 | 工具 | 它擅长什么 | 与 vaspscope 的关系 |
 |---|---|---|
-| [VASPKIT](https://vaspkit.com/) | 命令行后处理、生成绘图数据 | **互补**：能读它产生的 `PDOS_*` 口径；fat band 支持待做 |
+| [VASPKIT](https://vaspkit.com/) | 命令行后处理、生成绘图数据 | **互补**：能读它产生的 `PDOS_*` 等口径 |
 | [VESTA](https://jp-minerals.org/vesta/) | 晶体结构与电荷密度三维可视化 | **互补**：结构页配色与键长字典参考了 VESTA 的习惯 |
 | [py4vasp](https://github.com/materialsproject/py4vasp) / [sumo](https://github.com/SMTG-Bham/sumo) | Python 分析与出版级出图 | **分工**：统计/拟合/正式出图用它们；"打开就看、随手导出"用 vaspscope |
 | [VTST tools](https://theory.cm.utexas.edu/vtsttools/) | NEB 能量与距离提取 | **口径一致**：能垒页的取数与 X 口径按其脚本语义实现 |
@@ -195,8 +195,6 @@ ssh you@your-cluster "echo ok"   # 不再问密码即成功
 
 ## 未做与计划
 
-- [ ] **fat band / 投影能带**（`PBAND_*` 12 列，线宽 ∝ 权重）
-- [ ] NEB 的 **3D 点位图**；`COORDINATION_NUMBER` 右轴；Arrhenius（多温度 ln D vs 1/T）
 - [ ] **多任务对比**（同一图叠多条能带 / 收敛曲线）
 - [ ] 图片目录级批处理（现在一个目录要发多次请求）
 - [ ] **CI**（GitHub Actions 跑上面的测试）
