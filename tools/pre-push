@@ -23,7 +23,7 @@ echo "[pre-push] 脱敏闸门：检查即将推送的内容……"
 GATE=':(exclude)tools/pre-push'
 GATE2=':(exclude)tools/scrub.mjs'
 GATE3=':(exclude)tools/ci/checks.mjs'   # CI 自检脚本里也写着这些正则（不排除就会自匹配 ✗）
-BAD='hcx|leehpc|lenovo|rocky|101\.7\.129\.73|D:\\dsh|D:\\\\dsh|/home/hcx|/home/leehpc'   # 含转义形式 D:\\\\dsh ✓（escaped 写法一直是盲区 ✗）
+BAD='hcx|leehpc|lenovo|rocky|101\.7\.129\.73|D:\\dsh|D:\\\\dsh|D:/dsh|D:\\/dsh|/home/hcx|/home/leehpc'   # 反斜杠 + 正斜杠 + 混合形式全拦 ✓   # 含转义形式 D:\\\\dsh ✓（escaped 写法一直是盲区 ✗）
 HITS=$(git grep -n -I -E "$BAD" -- . "$GATE" "$GATE2" "$GATE3" 2>/dev/null || true)
 if [ -n "$HITS" ]; then
   echo "[pre-push] ✗ 发现个人数据，拒绝推送："
