@@ -138,7 +138,6 @@ node --test dsh-plugin/test/host.test.mjs    # 宿主半边单测（路由注册
 node dsh-plugin/test/live-smoke.mjs          # 打真机的冒烟（需先配好 sshHost / roots）
 ```
 
-> 开发期还有一组**离线探针**（DOM 契约 + 关键绘图口径的断言），用于回归；未随仓库发布。
 
 ## 常见问题
 
