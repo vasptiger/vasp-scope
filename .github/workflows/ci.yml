@@ -14,7 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         # 直接验证 README 里"Node >= 18"这句承诺 —— 不是只在作者那台机器上跑过 ✓
-        node: ['18.x', '20.x', '22.x', '24.x']
+        # Node 18 已于 2025-04 EOL，不再列入矩阵（文档里也同步改成 20+）
+        node: ['20.x', '22.x', '24.x']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,7 +26,16 @@ jobs:
       - name: 单元测试 · 浏览器半边（模块契约 / 槽位 / 页面不挂）
         run: node --test dsh-plugin/test/client.test.mjs
       - name: 仓库自检（面板语法 / 独立版可加载 / 无本地配置 / 无个人数据）
-        run: node tools/ci/checks.mjs
+        # 失败时抛 GitHub 注解 —— 日志是懒加载的（外部读不到 ✗），注解会出现在 Checks 页 HTML 里 ✓
+        run: |
+          set +e
+          out=$(node tools/ci/checks.mjs 2>&1)
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=仓库自检失败::$(printf '%s' "$out" | tr '\n' '|' | head -c 900)"
+          fi
+          exit "$code"
 
   hygiene:
     name: 入库卫生（脱敏与密钥）

@@ -138,7 +138,7 @@ node --test dsh-plugin/test/host.test.mjs    # 宿主半边单测（路由注册
 node --test dsh-plugin/test/client.test.mjs  # 浏览器半边单测（9 项）
 node tools/ci/checks.mjs                     # 仓库自检（面板语法 / 两半可加载 / 无个人数据）
 node dsh-plugin/test/live-smoke.mjs          # 打实测环境的冒烟（需先配好 sshHost / roots）
-# CI：以上单测与自检在 GitHub Actions 上跑 Node 18 / 20 / 22 / 24 四档矩阵 → 所以「Node.js 18+」是被验证过的 ✓
+# CI：以上单测与自检在 GitHub Actions 上跑 Node 20 / 22 / 24 三档矩阵（Node 18 已于 2025-04 EOL，不再列入）
 ```
 
 ## 常见问题
