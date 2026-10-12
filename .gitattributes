@@ -19,3 +19,8 @@
 *.ico binary
 *.zip binary
 *.pdf binary
+
+# 语言统计：面板是交付物本身（单文件 HTML 里含 JS），不该把语言标签搅成 HTML / 未识别 ✗
+# 标成 documentation 后，GitHub 按剩下的 JS/MJS 统计 → 标签显示 JavaScript ✓
+standalone/public/panel.html  linguist-documentation
+dsh-plugin/assets/panel.html  linguist-documentation

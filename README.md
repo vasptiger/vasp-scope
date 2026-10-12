@@ -6,6 +6,7 @@
 一次 ssh 取回：**收敛曲线 · 能带(带高对称点) · PDOS(自旋/分元素) · NEB 能垒 · 3D 结构 · 文件与图片 · AIMD(MSD/RDF)**，
 每一页都能单独导出 PNG / CSV。
 
+[![CI](https://github.com/vasptiger/vasp-scope/actions/workflows/ci.yml/badge.svg)](https://github.com/vasptiger/vasp-scope/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen.svg)](https://nodejs.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#安装)
@@ -134,7 +135,10 @@ node server.js                          # Windows: 双击 start.bat
 ```bash
 node standalone/smoke-test.mjs               # 端到端连通性自检（面板 HTML + 5 条路由）
 node --test dsh-plugin/test/host.test.mjs    # 宿主半边单测（路由注册等）
+node --test dsh-plugin/test/client.test.mjs  # 浏览器半边单测（9 项）
+node tools/ci/checks.mjs                     # 仓库自检（面板语法 / 两半可加载 / 无个人数据）
 node dsh-plugin/test/live-smoke.mjs          # 打实测环境的冒烟（需先配好 sshHost / roots）
+# CI：以上单测与自检在 GitHub Actions 上跑 Node 18 / 20 / 22 / 24 四档矩阵 → 所以「Node.js 18+」是被验证过的 ✓
 ```
 
 ## 常见问题
