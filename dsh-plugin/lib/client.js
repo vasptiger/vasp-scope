@@ -12,7 +12,9 @@
  * 不用猜 class 名、不用自愈重试，折叠态（wide=false）由外壳交给我们处理，失败面更小。
  *
  * 点击动作 = 把本地面板文件开成侧栏里的一个标签页：
- *   ctx.get('betterSidebar').openFile({ sessionId }, 'D:\\vasp-panel\\panel.html')
+ *   ctx.get('betterSidebar').openFile({ sessionId }, PANEL_PATH)
+ *   其中 PANEL_PATH 来自插件配置 panelPath（仓库里不写死绝对路径 ✗）；
+ *   没配就向宿主 GET /plugins/dsh-vasp-scope/ping 索取 panelPath ✓
  * 为什么不是打开 http://127.0.0.1:19387/plugins/dsh-vasp-scope/panel：
  *   侧栏浏览器（better-sidebar 的网页 tab）硬编码拦掉一切本机地址，
  *   所以入口只负责「把本地面板文件开进侧栏」，面板自身用 file:// / 沙箱 iframe 渲染，
@@ -122,7 +124,17 @@
        没配就退化成相对路径，外壳会拼到会话 cwd —— 只作兜底 ✓ */
     try {
       if (config && typeof config.panelPath === 'string' && config.panelPath.trim()) PANEL_PATH = config.panelPath.trim();
-      else console.warn('[dsh-vasp-scope] 未配置 panelPath，面板可能打不开；请在插件配置里写 panelPath: <面板 html 的绝对路径>');
+      else {
+        /* 兜底：向宿主讨真实路径 ✓（宿主用 HERE/../assets/panel.html 算出 ✓，与 /panel 同一算法）
+           —— 侧栏的网页 tab 拦本机地址 ✗，所以这里只能拿"文件路径"，不能拿 URL ✓ */
+        console.warn('[dsh-vasp-scope] 未配置 panelPath，改为向宿主索取…');
+        try {
+          fetch('/plugins/dsh-vasp-scope/ping')
+            .then(function (r) { return r.json(); })
+            .then(function (j) { if (j && j.panelPath) PANEL_PATH = j.panelPath; })
+            .catch(function () { /* noop */ });
+        } catch (_) { /* noop */ }
+      }
     } catch (_) { /* noop */ }
           try {
             var slots = svc(ctx, 'slots');
