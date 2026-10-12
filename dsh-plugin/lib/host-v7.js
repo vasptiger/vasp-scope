@@ -583,7 +583,9 @@ export function createHandlers(cfg, deps = {}) {
     },
 
     async ping(_req, res) {
-      json(res, 200, { ok: true, plugin: name, version: 1, sshHost: cfg.sshHost || '', roots });
+      /* panelPath：让客户端/自检能问到"面板文件到底在哪" ✓
+         算法与 /panel 一致（HERE/../assets/panel.html）—— 仓库里不必写死绝对路径 ✓ */
+      json(res, 200, { ok: true, plugin: name, version: 1, sshHost: cfg.sshHost || '', roots, panelPath: join(HERE, '..', 'assets', 'panel.html') });
     },
 
     async panel(_req, res) {

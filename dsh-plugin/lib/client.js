@@ -26,7 +26,7 @@
  */
 (function () {
   var ID = 'dsh-vasp-scope';
-  var PANEL_PATH = 'D:\\vasp-panel\\panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
+  var PANEL_PATH = 'assets/panel.html';   // 面板主交付物（绝对路径更稳：外壳会把相对路径拼到会话 cwd 上）
   var ENTRY_ATTR = 'data-dsh-vasppanel-entry';
 
   try {
@@ -116,7 +116,14 @@
           };
         }
 
-        function apply(ctx) {
+        function apply(ctx, config) {
+    /* 面板路径优先取插件配置 panelPath ✓ —— 仓库里**不写死任何绝对路径** ✗
+       （写死过：先是作者机器路径 ✗，后来被我改成不存在的路径 ✗）
+       没配就退化成相对路径，外壳会拼到会话 cwd —— 只作兜底 ✓ */
+    try {
+      if (config && typeof config.panelPath === 'string' && config.panelPath.trim()) PANEL_PATH = config.panelPath.trim();
+      else console.warn('[dsh-vasp-scope] 未配置 panelPath，面板可能打不开；请在插件配置里写 panelPath: <面板 html 的绝对路径>');
+    } catch (_) { /* noop */ }
           try {
             var slots = svc(ctx, 'slots');
             if (!slots || typeof slots.inject !== 'function' || typeof slots.register !== 'function') return function () {};
